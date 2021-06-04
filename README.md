@@ -12,5 +12,5 @@ Installation / Usage:
 5. Open any SCN, PFB, USER, RCOL, FSMV2, MOTFSM, or BHVT file with 010
 
 Credits:
-Praydog for making the RSZ JSON dumps
-Darkness for making the RSZparser.DLL
+-Praydog for making the RSZ JSON dumps
+-Darkness for making the RSZparser.DLL
