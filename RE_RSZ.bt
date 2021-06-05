@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.41 dev
+//   Version: 0.41a
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: June 5, 2021
+//   History: June 6, 2021
 //------------------------------------------------
 //Option:                                                                       //Effect:
 local string    RSZVersion <hidden=false>          = "DMC5";                    //change between RE2, RE3, RE8 or DMC5 (support for games besides RE8 is limited)
@@ -784,7 +784,7 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 				case GameObjectRef_tid:
                 case Guid_tid:
 					setAlignment(align);
-                    redetectGuid();
+                    //redetectGuid();
 					rGUID Guid;
 					break;
 				case LineSegment_tid:
@@ -810,8 +810,9 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 				case UserData_tid:
                     setAlignment(align);
                     uint ObjectIndex;
-                    if (ObjectIndex == 0 && (RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[ObjectIndex].dataOffs)) { //
-                        FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[ObjectIndex].dataOffs);
+                    if ((RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) 
+                    && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs)) {
+                        FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs);
                         struct RSZMagic UserData <size=80>;
                         FSeek(startof(ObjectIndex)+4);
                         break;
@@ -998,9 +999,13 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                         setAlignment(align);
                         int32 data, data, data;
                         break;
-                    }
-                    if (find((wstring)fieldElementType, "tring") == -1) 
-					    break; //if String, continue on to regular string
+                    } else if (find((wstring)fieldElementType, "tring") == -1) { 
+                        setAlignment(align);
+                        if (elementSize % 4 == 0)
+                            float data[elementSize / 4];
+                        else ubyte data[elementSize];
+					    break;
+                    } //if ukn_type String, continue on to regular string
 				case Resource_tid:
 				case String_tid:
 				case String4A4_tid:
@@ -1028,8 +1033,8 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
         if (title == "") {
             if (exists(data) && exists(size) && size != 1) {
                 title = (wstring)data;
-            } else if (exists(ObjectIndex) && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) && secondTitle == "") { //&& sizeof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title) > sizeof(title)
-                secondTitle = RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title;
+            } else if (exists(ObjectIndex) && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) && secondTitle == "") { //&& sizeof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title) > sizeof(title)
+                secondTitle = (wstring)RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title;
             } else if (secondTitle == "" && exists(Guid) && ReadUInt64(startof(Guid)) != 0) {
                 secondTitle = ReadrGUID(Guid);
             }
@@ -1052,6 +1057,8 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
             SPrintf(s, "%s[%u]", RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].name, r.ObjectIndex);
             return s;
         } else if (r.fieldDataType != "") {
+            if (exists(r.RSZ))
+                return "*" + r.fieldDataType + " " + r.fieldName; 
             return r.fieldDataType + " " + r.fieldName;  
         } else return r.fieldName; 
     }
@@ -1093,11 +1100,9 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                 if (r.var[0].ObjectIndex != r.var.ObjectIndex)
                     SPrintf(s, "%s - [%u]", s, r.var.ObjectIndex);
             } else SPrintf(s, "%s", ReadRSZVariable(r.var[0]));
-                //SPrintf(s, "%s = %s", ReadRSZVariableName(r.var[0]), ReadRSZVariable(r.var[0]));
         } else if (exists(r.ObjectIndex) && r.ObjectIndex > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex])) {
             if (exists(RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].title) && RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].title != "")
                 return RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].title;
-            //else SPrintf(s, "%s[%u]", RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].name, r.ObjectIndex);
         } else 
             switch (r.fieldType) {
                 case Bool_tid:
@@ -1311,6 +1316,7 @@ typedef struct {
             title = ReadRSZVariable(var[0]);
     
     if (FTell() - startof(this)  == 0) { 
+        //Printf("empty struct %s %u\n", name, FTell());
         ubyte skipFileData <hidden=true>;
     }
     if (FTell()==startof(this))
