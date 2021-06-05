@@ -1243,12 +1243,6 @@ typedef struct {
             if (startof(RSZFile[lvl].Data.RawData.RSZ[o]) == startof(this)) 
                 { idx = o; break; }
     
-    local string name <hidden=true> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.HashName;
-    local wstring title <hidden=true>; 
-    local wstring secondTitle <hidden=true>;
-    local uint hash <hidden=true, format=hex> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash;
-    local uint isUserData <hidden=true>;
-    
     if (exists(parentof(this).arrayOfIDs)) 
         for (o=0;o<parentof(this).counter;o++)
             if (arrayOfOffsets[o] == startof(this))
@@ -1256,14 +1250,18 @@ typedef struct {
             else if (arrayOfOffsets[o] > startof(this))
                 break;
     
-
-    
     if (exists(parentof(this).ObjectIndex) ) {
         idx = parentof(this).ObjectIndex;  
         if (idx && GetFieldCount(hash) == 0xFFFFFFFF) {
             ParseJson(JsonPath); Printf("Parsing JSON %s\n", JsonPath);
         }
     }
+
+    local string name <hidden=true> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.HashName;
+    local wstring title <hidden=true>; 
+    local wstring secondTitle <hidden=true>;
+    local uint hash <hidden=true, format=hex> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash;
+    local uint isUserData <hidden=true>;
     
     for (j=0; j<RSZFile[lvl].RSZHeader.userdataCount; j++)
         if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].typeId == hash) {
