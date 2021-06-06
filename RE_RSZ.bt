@@ -755,7 +755,7 @@ void enums(){
 //main typedef for RSZ chunks:
 
 typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
-    local string fieldName <hidden=false> = GetFieldName(classHash, fieldIndex);
+    local string fieldName <hidden=true> = GetFieldName(classHash, fieldIndex);
     local string fieldOrgTypeName <hidden=true> = GetFieldOrgTypeName(classHash, fieldIndex);
     local string fieldDataType <hidden=true> = GetFieldTypeName(classHash, fieldIndex);
     local string fieldElementType <hidden=true> = fieldDataType;//GetElementTypeName(classHash, fieldIndex);
