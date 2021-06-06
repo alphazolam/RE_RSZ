@@ -3,7 +3,7 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.41a
+//   Version: 0.42
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
@@ -14,8 +14,8 @@
 local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5 (support for games besides RE8 is limited)
 local int       Nesting         <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment   <hidden=true>        = FALSE;                     //Show metadata for each variable
-local int       ShowChildRSZs   <hidden=true>        = FALSE;                     //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
-local int       UseSpacers      <hidden=true>        = TRUE;                     //Show blank rows between some structs
+local int       ShowChildRSZs   <hidden=true>        = TRUE;                      //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
+local int       UseSpacers      <hidden=true>        = TRUE;                      //Show blank rows between some structs
 local int       AutoDetectGame  <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
 
 //Game							                    //Extracted Path
@@ -69,22 +69,28 @@ Local_Directory = StrDel( Local_Directory, findValue, sizeof(Local_Directory) - 
 local wstring lower <hidden=true> = Lower(Local_Directory);
 	
 if (AutoDetectGame) {
+
     if (find(lower, "dmc") != -1 || find(lower, "evil may") != -1) {
 	    RSZVersion = "DMC5";
 	    extractedDir = DMC5Path;
+
     } else if (find(lower, "re2") != -1 || find(lower, "evil 2") != -1) {
 	    RSZVersion = "RE2";
 	    extractedDir = RE2Path;
-    } else if (find(lower, "re3") != -1 || find(lower, "evil 3") != -1) { //|| find(GetFileName(), "\\stm\\") != -1
+
+    } else if (find(lower, "re3") != -1 || find(lower, "evil 3") != -1) {
 	    RSZVersion = "RE3";
 	    extractedDir = Lower(RE3Path);
 	    Local_Directory += "stm\\";
-    } else if (find(lower, "re8") != -1 || find(lower, "evil 8") || find(lower, "illage") != -1) {
+
+    } else if (find(lower, "re8") != -1 || find(lower, "evil 8") != -1 || find(lower, "illage") != -1) {
 	    RSZVersion = "RE8";
 	    extractedDir = Lower(RE8Path);
 	    Local_Directory += "stm\\";
+
     } else 
 	    Local_Directory += "x64\\";
+
 } else if (RSZVersion == "DMC5" || RSZVersion == "RE2" || RSZVersion == "RE7") {
     Local_Directory += "x64\\";
 } else {
@@ -143,7 +149,7 @@ void FileOpener(wstring path) {
 		RunTemplate(tmpNm, 0);
 }
 
-typedef byte BLANK <name=readBLANK,read=readBLANK>;
+typedef byte BLANK <name=readBLANK, read=readBLANK, write="">;
 
     string readBLANK(BLANK &ref) { return " ";}
 
@@ -711,10 +717,45 @@ typedef ubyte Bool <read=ReadBOOL, write=WriteBOOL>;
         }
     }*/
 
+void enums(){
+    if (fieldName == "DmgType") {
+        FSkip(-4);
+        enum { 
+            None = -1,
+            Minimum = 0,
+            NormalS = 1,
+            NormalL = 2,
+            NormalLL = 3,
+            Down = 4,
+            DownBound = 5,
+            Slam = 6,
+            SlamBound = 7,
+            Upper = 8,
+            HyperUpper = 9,
+            HyperUpperAir = 10,
+            Blown = 11,
+            Collapse = 12,
+            RollingUpper = 13,
+            CheckSpin = 14,
+            Spin = 15,
+            DiagonalBlown = 16,
+            WindS = 17,
+            WindL = 18,
+            SnatchRelase = 19,
+            StraightBlown = 20,
+            Tremor = 21,
+            Inhale = 22,
+            MotionContinue = 23,
+            Explosion = 24
+        } DamageType;
+    }
+}
+
+
 //main typedef for RSZ chunks:
 
 typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
-    local string fieldName <hidden=true> = GetFieldName(classHash, fieldIndex);
+    local string fieldName <hidden=false> = GetFieldName(classHash, fieldIndex);
     local string fieldOrgTypeName <hidden=true> = GetFieldOrgTypeName(classHash, fieldIndex);
     local string fieldDataType <hidden=true> = GetFieldTypeName(classHash, fieldIndex);
     local string fieldElementType <hidden=true> = fieldDataType;//GetElementTypeName(classHash, fieldIndex);
@@ -877,6 +918,7 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 					fieldDataType = "Int";
 					setAlignment(align);
 					int data;
+                    enums();
 					break;
 				case S64_tid:
 					fieldDataType = "Int64";
@@ -1382,21 +1424,22 @@ typedef Instance RSZInstance <name=ReadRSZInstanceName, read=ReadRSZInstance, wr
 
     wstring ReadRSZInstance(RSZInstance &r) {
         local uint lvl = getLevel(startof(r));
-        if (exists(parentof(r).lvl)) lvl = parentof(r).lvl;
+        if (exists(parentof(r).lvl)) 
+            lvl = parentof(r).lvl;
         if (exists(r.skip) || (exists(parentof(r).ObjectIndex) && exists(RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex].skip))) {
-            return ReadHash(RSZFile[lvl].InstanceInfos.instanceInfo[r.idx].typeId.Hash);
+            return "b" + ReadHash(RSZFile[lvl].InstanceInfos.instanceInfo[r.idx].typeId.Hash);
         } else if (exists(r.skipFileData)) {
             for (j=0; j<RSZFile[lvl].RSZHeader.userdataCount; j++)
                 if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].instanceId == r.idx)
-                    return RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].path.String;
+                    return "a" + RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].path.String;
         } else if (exists(r.title) ) {
             return r.title;
         } else if (exists(parentof(r).ObjectIndex) ) {
-            return RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex].title;
+            return "c" + RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex].title;
         } else {
             for (o=1;o<RSZFile[lvl].RSZHeader.instanceCount;o++) 
                 if (startof(RSZFile[lvl].Data.RawData.RSZ[o]) == startof(r) && !exists(RSZFile[lvl].Data.RawData.RSZ[o].skipFileData))
-                    return RSZFile[lvl].Data.RawData.RSZ[o].name;
+                    return "d" + RSZFile[lvl].Data.RawData.RSZ[o].name;
         } return "";
     }
 
@@ -1751,7 +1794,6 @@ typedef struct OBJECT (ubyte isFolder)
     }
     
     checkUseSpacers();
-
     
     if (startof(this) > FTell())
         FSeek(startof(this) + sizeof(RSZ[0]));
@@ -1761,7 +1803,7 @@ typedef OBJECT GameObject <name=ReadGameObjectName, read=ReadGameObject>;
 
     wstring ReadGameObjectName(GameObject &g) {         
         if (exists(g.RSZ[0].var[0].data))
-            return g.RSZ[0].var[0].data;
+            return (wstring)g.RSZ[0].var[0].data;
         return "";
     }
 
@@ -1937,7 +1979,7 @@ typedef struct {
 } RSZMagic <name="RSZ", name=ReadRSZMagicName, read=ReadRSZMagic>;
 
     string ReadRSZMagicName(RSZMagic &m) { 
-        if (exists(m.InstanceInfos.instanceInfo[m.ObjectTable[0]].typeId.HashName)) {
+        if (exists(m.ObjectTable) && exists(m.InstanceInfos.instanceInfo[m.ObjectTable[0]].typeId.HashName)) {
             return m.InstanceInfos.instanceInfo[m.ObjectTable[0]].typeId.HashName; 
         } else {
             local uint f;
@@ -1986,7 +2028,7 @@ while (FTell()+4 < FileSize()) {
         finished = false;
         if (level == 1 && !FEof()) 
             { FSkip(-1); BLANK blank; }
-        if ((level == 0 || ShowChildRSZs) && Header.magic != 1414940738)
+        if (true)//((level == 0 || ShowChildRSZs) && Header.magic != 1414940738)
             struct RSZMagic RSZFile;
         else 
             struct RSZMagic RSZFile <hidden=true>;
