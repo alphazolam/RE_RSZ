@@ -8,28 +8,6 @@
 //  Category: RE Engine
 //   History: June 6 2021
 //------------------------------------------------
-void ChangeValue(RSZVariable &r) 
-{
-    if (searchValue == "" || ReadRSZVariable(r) == searchValue) {
-        oldValue = ReadRSZVariable(r);
-        if (oldValue[0] == 91) {
-            newValue = changeValue;
-        } else if (multiply) {
-            SPrintf(newValue, "%g", Atof(oldValue) * Atof(changeValue));
-        } else if (divide) {
-            if (Atof(oldValue) == 0) 
-                { v++; continue; }
-            SPrintf(newValue, "%g", Atof(oldValue) / Atof(changeValue));
-        } else if (add) {
-            SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
-        } else {
-            newValue = changeValue;
-        }
-        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
-        WriteRSZVariable(r, (wstring)newValue);
-    }
-}
-
 local int lv, r, v, a;
 local string oldValue, newValue;
 local int multiply, divide, add;
@@ -54,6 +32,31 @@ else if (changeValue[0] == 43)
     add = TRUE;
 if (multiply || add || divide) 
     changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
+
+void ChangeValue(RSZVariable &r) 
+{
+    if (searchValue == "" || ReadRSZVariable(r) == searchValue) {
+        oldValue = ReadRSZVariable(r);
+        if (oldValue[0] == 91) {
+            newValue = changeValue;
+        } else if (multiply) {
+            SPrintf(newValue, "%g", Atof(oldValue) * Atof(changeValue));
+        } else if (divide) {
+            if (Atof(oldValue) == 0) 
+                { v++; continue; }
+            SPrintf(newValue, "%g", Atof(oldValue) / Atof(changeValue));
+        } else if (add) {
+            SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
+        } else {
+            newValue = changeValue;
+        }
+        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        WriteRSZVariable(r, (wstring)newValue);
+    }
+}
+
+
+//start
 for (lv=0; lv<level; lv++) {
     r = 0;
     while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {

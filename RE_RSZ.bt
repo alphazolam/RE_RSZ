@@ -3,18 +3,18 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.42
+//   Version: 0.43
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: June 6, 2021
+//   History: June 8, 2021
 //------------------------------------------------
 //              Option:                                                           //Effect:
 local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5 (support for games besides RE8 is limited)
 local int       Nesting         <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment   <hidden=true>        = FALSE;                     //Show metadata for each variable
-local int       ShowChildRSZs   <hidden=true>        = TRUE;                      //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
+local int       ShowChildRSZs   <hidden=true>        = FALSE;                      //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
 local int       UseSpacers      <hidden=true>        = TRUE;                      //Show blank rows between some structs
 local int       AutoDetectGame  <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
 
@@ -23,6 +23,7 @@ local wstring DMC5Path <hidden=true> =              "D:\\modmanager\\REtool\\DMC
 local wstring RE2Path <hidden=true> =               "D:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
 local wstring RE3Path <hidden=true> =               "D:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
 local wstring RE8Path <hidden=true> =               "D:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
+
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -827,8 +828,8 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     //redetectGuid();
 					rGUID Guid;
                     break;
-                case LineSegment_tid:
                 case OBB_tid:
+                case Capsule_tid:
 				case Mat4_tid:
 					setAlignment(align);
 					float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
@@ -849,13 +850,19 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                         uint ObjectIndex <hidden=true>;
                     else
 			            uint ObjectIndex;
-                    if (fieldType == UserData_tid && (RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) 
-                    && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs)) {
-                        FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs);
-                        struct RSZMagic UserData <open=true, size=80>;
-                        FSeek(startof(ObjectIndex)+4);
-                        checkUseSpacers();
-                        break;
+                    if (fieldType == UserData_tid) {
+                        if ((RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) 
+                        && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs)) {
+                            FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs);
+                            struct RSZMagic UserData <open=true, size=52>;
+                            FSeek(startof(ObjectIndex)+4);
+                            checkUseSpacers();
+                            break;
+                        } else if (exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx)) {
+                            FSkip(-1);
+                            struct StringRead path ( (startof(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx])+8), startof(RSZFile[lvl].RSZHeader));
+                            break;
+                        } 
                     } else if (fieldType == Object_tid && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
 						FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])); 
 						struct RSZInstance RSZ <open=true, size=SizeRSZInstance>;
@@ -910,14 +917,14 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 					setAlignment(align);
 					uint data;
 					break;
-				case Sphere_tid:
+				/*case Sphere_tid:
 					setAlignment(align);
 					uint data;
 					break;
 				case Struct_tid:
 					setAlignment(align);
 					uint data;
-					break;
+					break;*/
 				case U16_tid:
 					fieldDataType = "UShort";
 					setAlignment(align);
@@ -1050,19 +1057,25 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     local ubyte isString <hidden=true> = TRUE;
 					break;
 				default:
-					Printf("Unknown type in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
+					Printf("%u Unknown type in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", FTell(), GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
+                    if (elementSize % 4 == 0)
+                        float data[elementSize/4];
+                    else
+                        ubyte data[elementSize];
 					break;
 			}
         }
         setSize();
         
         if (title == "") {
-            if (exists(data) && exists(size) && size != 1) {
+            if (exists(data) && exists(size) && size > 1) {
                 title = (wstring)data;
             } else if (exists(this.UserData) && secondTitle == "") { //&& sizeof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title) > sizeof(title)
                 secondTitle = ReadRSZMagic(this.UserData);
             } else if (exists(ObjectIndex) && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) && secondTitle == "" && RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title != "") {
                 secondTitle = RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title;
+                if (fieldIndex == 0)
+                    title = secondTitle;
             } else if (secondTitle == "" && exists(Guid) && ReadUInt64(startof(Guid)) != 0) {
                 secondTitle = ReadrGUID(Guid);
             }
@@ -1161,7 +1174,9 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     if (exists(r.data))
                         return r.data;
                     break;
+                case Float2_tid:
                 case Vec2_tid:
+                case Point_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
                     break;
@@ -1179,9 +1194,6 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                 case GameObjectRef_tid:
                     if (exists(r.Guid))
                         s = ReadrGUID(r.Guid);
-                    break;
-                case Float2_tid:
-                    SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
                     break;
                 case UndefinedType_tid:
                 case UndefinedTypeList_tid:
@@ -1253,10 +1265,6 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     WriteUInt64(pos, Atoi(s)); break;
                 case F32_tid:
                     WriteFloat(pos, Atof(s)); break;
-
-                case Float2_tid:
-					writeRSZArray(r, s, 2, 4);
-                    break;
                 case String4A4_tid:
                 case String_tid:
                 case Resource_tid:
@@ -1266,6 +1274,7 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                 case Vec2_tid:
                 case Range_tid:
                 case Float2_tid:
+                case Point_tid:
                     writeRSZArray(r, s, 2, 4);
                     break;
                 case Vec3_tid:
@@ -1343,7 +1352,7 @@ typedef struct {
     if (exists(parentof(this).ObjectIndex) ) {
         idx = parentof(this).ObjectIndex;  
         if (idx && GetFieldCount(hash) == 0xFFFFFFFF) {
-            ParseJson(JsonPath); Printf("Parsing JSON %s\n", JsonPath);
+            ParseJson(JsonPath); Printf("\nParsing JSON %s\n", JsonPath);
         }
     }
 
@@ -1502,10 +1511,10 @@ typedef struct(int64 atAddress, int64 addOffset) {
 typedef struct {
 	uint32 Hash;
 	local string HashName = ReadHashName(Hash);
-} HASH <read=ReadHASHSTRING>;
+} HASH <read=ReadHASH>;
 
-    string ReadHASHSTRING (HASH &h) {
-	    return  h.HashName;
+    string ReadHASH (HASH &h) {
+	    return ReadHash(h.Hash);
     }
     
     string ReadHash(uint32 &input) {
@@ -1934,7 +1943,8 @@ typedef struct {
                         RSZInstance RSZ <fgcolor=cGreen>;
                     else
                         RSZInstance RSZ;
-                    if (sizeof(RSZ) == 0) Printf("tell: %u\n", FTell()); 
+                    if (sizeof(RSZ) == 0) 
+                        Printf("Empty struct: %u\n", FTell()); 
                     if (exists(RSZ.skipFileData)) {
                         FSeek(startof(RSZ));
                     } else if (exists(RSZ.skip)) {
@@ -1989,7 +1999,7 @@ typedef struct {
         struct {
             for (f=0; f<RSZHeader.userdataCount; f++) {
                 FSeek(RSZUserDataInfos.userDataInfo[f].dataOffs);
-                struct RSZMagic UserData <size=80>;
+                struct RSZMagic UserData <size=52>;
             }
         } UserData;
     }
