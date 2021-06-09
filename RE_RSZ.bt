@@ -27,23 +27,18 @@ local wstring RE8Path <hidden=true> =               "D:\\modmanager\\REtool\\RE8
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
 ubyte   IsInitialized();
-ubyte   ParseJson(string jsonPath);
+void    ParseJson(string jsonPath);
 string  GetRSZClassName(uint32 classHash);
 uint32  GetFieldCount(uint32 classHash);
 uint32  GetFieldAlignment(uint32 classHash, uint32 fieldIndex);
 ubyte   GetFieldArrayState(uint32 classHash, uint32 fieldIndex);
 string  GetFieldName(uint32 classHash, uint32 fieldIndex);
-string  GetFieldOrgTypeName(uint32 classHash, uint32 fieldIndex);
 string  GetFieldTypeName(uint32 classHash, uint32 fieldIndex);
+string  GetFieldOrgTypeName(uint32 classHash, uint32 fieldIndex);
 uint32  GetFieldSize(uint32 classHash, uint32 fieldIndex);
-uint32  GetFieldType(uint32 classHash, uint32 fieldIndex);
-uint32  GetElementAlignment(uint32 classHash, uint32 fieldIndex);
-string  GetElementOrgTypeName(uint32 classHash, uint32 fieldIndex);
-uint32  GetElementSize(uint32 classHash, uint32 fieldIndex);
-string  GetElementTypeName(uint32 classHash, uint32 fieldInde);
-uint32  GetElementType(uint32 classHash, uint32 fieldInde);
-uint32  SmartGetFieldSize(uint32 classHash, uint32 fieldIndex);
-uint32  SmartGetFieldAlignment(uint32 classHash, uint32 fieldIndex);
+uint64  GetFieldType(uint32 classHash, uint32 fieldIndex);
+//ubyte   IsClassNative(uint32 classHash);
+ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
 
 //Local variables:
@@ -160,46 +155,91 @@ typedef enum <uint32> {
 	not_init,
 	class_not_found,
 	out_of_range,
+	Undefined_tid,
+	Object_tid,
+	Action_tid,
+	Struct_tid,
+	NativeObject_tid,
+	Resource_tid,
+	UserData_tid,
 	Bool_tid,
-	Capsule_tid,
-	Color_tid,
+	C8_tid,
+	C16_tid,
+	S8_tid,
+	U8_tid,
+	S16_tid,
+	U16_tid,
+	S32_tid,
+	U32_tid,
+	S64_tid,
+	U64_tid,
 	F32_tid,
 	F64_tid,
+	String_tid,
+	MBString_tid,
+	Enum_tid,
+	Uint2_tid,
+	Uint3_tid,
+	Uint4_tid,
+	Int2_tid,
+	Int3_tid,
+	Int4_tid,
 	Float2_tid,
 	Float3_tid,
 	Float4_tid,
-	GameObjectRef_tid,
-	Guid_tid,
-	Int2_tid,
-	LineSegment_tid,
+	Float3x3_tid,
+	Float3x4_tid,
+	Float4x3_tid,
+	Float4x4_tid,
+	Half2_tid,
+	Half4_tid,
+	Mat3_tid,
 	Mat4_tid,
-	OBB_tid,
-	Object_tid,
-	Point_tid,
-	Quaternion_tid,
-	Range_tid,
-	RangeI_tid,
-	Resource_tid,
-	RuntimeType_tid,
-	S16_tid,
-	S32_tid,
-	S64_tid,
-	S8_tid,
-	Size_tid,
-	Sphere_tid,
-	String_tid,
-	String4A4_tid,
-	Struct_tid,
-	U16_tid,
-	U32_tid,
-	U64_tid,
-	U8_tid,
-	UserData_tid,
 	Vec2_tid,
 	Vec3_tid,
 	Vec4_tid,
-	UndefinedType_tid,
-	UndefinedTypeList_tid,
+	VecU4_tid,
+	Quaternion_tid,
+	Guid_tid,
+	Color_tid,
+	DateTime_tid,
+	AABB_tid,
+	Capsule_tid,
+	TaperedCapsule_tid,
+	Cone_tid,
+	Line_tid,
+	LineSegment_tid,
+	OBB_tid,
+	Plane_tid,
+	PlaneXZ_tid,
+	Point_tid,
+	Range_tid,
+	RangeI_tid,
+	Ray_tid,
+	RayY_tid,
+	Segment_tid,
+	Size_tid,
+	Sphere_tid,
+	Triangle_tid,
+	Cylinder_tid,
+	Ellipsoid_tid,
+	Area_tid,
+	Torus_tid,
+	Rect_tid,
+	Rect3D_tid,
+	Frustum_tid,
+	KeyFrame_tid,
+	Uri_tid,
+	GameObjectRef_tid,
+	RuntimeType_tid,
+	Sfix_tid,
+	Sfix2_tid,
+	Sfix3_tid,
+	Sfix4_tid,
+	Position_tid,
+	F16_tid,
+	End_tid,
+	Data_tid
 } TypeIDs;
 
 typedef struct VARDATA(uint algn) {
@@ -717,11 +757,11 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
     local string fieldName <hidden=true> = GetFieldName(classHash, fieldIndex);
     local string fieldOrgTypeName <hidden=true> = GetFieldOrgTypeName(classHash, fieldIndex);
     local string fieldDataType <hidden=true> = GetFieldTypeName(classHash, fieldIndex);
-    local string fieldElementType <hidden=true> = fieldDataType;//GetElementTypeName(classHash, fieldIndex);
+    local string fieldElementType <hidden=true> = fieldDataType;//GetTypeName(classHash, fieldIndex);
     local TypeIDs fieldType <hidden=true> = GetFieldType(classHash, fieldIndex);
-    local uint32 elementSize <hidden=true> = SmartGetFieldSize(classHash, fieldIndex); //(fieldType >> 32) & 0xFFFF;
-    local uint32 align <hidden=true> = SmartGetFieldAlignment(classHash, fieldIndex); //(fieldType >> 48) & 0x7FFF;
-    local ubyte isList <hidden=true> = GetFieldArrayState(classHash, fieldIndex); //(fieldType >> 63) & 0x01;
+    local uint32 elementSize <hidden=true> = GetFieldSize(classHash, fieldIndex);
+    local uint32 align <hidden=true> = GetFieldAlignment(classHash, fieldIndex);
+    local ubyte isList <hidden=true> = GetFieldArrayState(classHash, fieldIndex);
     local int lvl <hidden=true> = getLevel(FTell());
     if (elementSize == 0xFFFFFFFF)
         elementSize = 4;
@@ -939,8 +979,7 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     int a;
                     int b;
                     break;
-                case UndefinedType_tid:
-                case UndefinedTypeList_tid:
+                case Data_tid:
                     setAlignment(align);
                     if (elementSize == 1) {
                         fieldDataType = "Byte";
