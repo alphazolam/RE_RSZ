@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.44
+//   Version: 0.44a
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: June 16, 2021
+//   History: June 17, 2021
 //------------------------------------------------
 //              Option:                                                           //Effect:
 local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5
@@ -965,6 +965,10 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                 setAlignment(align);
                 int32 data <name="int x">, data <name="int y">;
                 break;
+            case Int3_tid:
+                setAlignment(align);
+                int32 data <name="int x">, data <name="int y">, data <name="int z">;
+                break;
             case Data_tid:
             case ukn_type: 
                 setAlignment(align);
@@ -1182,11 +1186,13 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                 case Mat4_tid:
                 case Float4_tid:
 				case Quaternion_tid:
+                case Int3_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
                     break;
                 case Guid_tid:
                 case GameObjectRef_tid:
+                case Uri_tid:
                     if (exists(r.Guid))
                         s = ReadrGUID(r.Guid);
                     break;
@@ -1730,9 +1736,10 @@ typedef struct {
     string ReadUserDataInfoName(UserDataInfo &u) { return u.hash.HashName; }
 
 typedef struct {
-    if (RSZVersion == "DMC5" || RSZVersion == "RE2" && Header.magic == 4343376)
+    if (ReadInt(FTell()+4) != 0) //RSZVersion == "DMC5" || RSZVersion == "RE2" && Header.magic == 4343376
         wstring path; 
-    else StringRead pathStr(-1, 0);
+    else
+        StringRead pathStr(-1, 0);
 } Resource_Info <read=ReadResourceInfo>;
 
     string ReadResourceInfo(Resource_Info &r) { if (exists(r.path)) return r.path; return r.pathStr.String; }
