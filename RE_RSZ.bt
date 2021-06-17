@@ -3,18 +3,18 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.43
+//   Version: 0.44
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: June 8, 2021
+//   History: June 16, 2021
 //------------------------------------------------
 //              Option:                                                           //Effect:
-local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5 (support for games besides RE8 is limited)
+local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5
 local int       Nesting         <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment   <hidden=true>        = FALSE;                     //Show metadata for each variable
-local int       ShowChildRSZs   <hidden=true>        = FALSE;                      //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
+local int       ShowChildRSZs   <hidden=true>        = FALSE;                     //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
 local int       UseSpacers      <hidden=true>        = TRUE;                      //Show blank rows between some structs
 local int       AutoDetectGame  <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
 
@@ -28,23 +28,17 @@ local wstring RE8Path <hidden=true> =               "D:\\modmanager\\REtool\\RE8
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
 ubyte   IsInitialized();
-ubyte   ParseJson(string jsonPath);
+void    ParseJson(string jsonPath);
 string  GetRSZClassName(uint32 classHash);
 uint32  GetFieldCount(uint32 classHash);
 uint32  GetFieldAlignment(uint32 classHash, uint32 fieldIndex);
 ubyte   GetFieldArrayState(uint32 classHash, uint32 fieldIndex);
 string  GetFieldName(uint32 classHash, uint32 fieldIndex);
-string  GetFieldOrgTypeName(uint32 classHash, uint32 fieldIndex);
 string  GetFieldTypeName(uint32 classHash, uint32 fieldIndex);
+string  GetFieldOrgTypeName(uint32 classHash, uint32 fieldIndex);
 uint32  GetFieldSize(uint32 classHash, uint32 fieldIndex);
-uint32  GetFieldType(uint32 classHash, uint32 fieldIndex);
-uint32  GetElementAlignment(uint32 classHash, uint32 fieldIndex);
-string  GetElementOrgTypeName(uint32 classHash, uint32 fieldIndex);
-uint32  GetElementSize(uint32 classHash, uint32 fieldIndex);
-string  GetElementTypeName(uint32 classHash, uint32 fieldInde);
-uint32  GetElementType(uint32 classHash, uint32 fieldInde);
-uint32  SmartGetFieldSize(uint32 classHash, uint32 fieldIndex);
-uint32  SmartGetFieldAlignment(uint32 classHash, uint32 fieldIndex);
+uint64  GetFieldType(uint32 classHash, uint32 fieldIndex);
+ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
 
 //Local variables:
@@ -54,7 +48,6 @@ local uint RSZOffset <hidden=true> = FindFirst("RSZ",1,0,0,0.0,1,0,0,24);
 local int level <hidden=true>;
 local int finished <hidden=true>;
 local int broken <hidden=true>;
-local string errorMsg <hidden=true>;
 if (ShowAlignment) {
     local int varLen <hidden=false>;
     local uint offs[1000000] <hidden=false>, aligns[1000000] <hidden=false>, sizes[1000000] <hidden=false>; //synced
@@ -104,7 +97,40 @@ ParseJson(JsonPath);
 //Special functions & structs:
 LittleEndian();
 
-void skipToString() { while (!detectedString(FTell()+4)) FSkip(1); }
+//Create enums here:
+void enums(){
+    if (fieldName == "DmgType") {
+        FSkip(-4);
+        enum { 
+            None = -1,
+            Minimum = 0,
+            NormalS = 1,
+            NormalL = 2,
+            NormalLL = 3,
+            Down = 4,
+            DownBound = 5,
+            Slam = 6,
+            SlamBound = 7,
+            Upper = 8,
+            HyperUpper = 9,
+            HyperUpperAir = 10,
+            Blown = 11,
+            Collapse = 12,
+            RollingUpper = 13,
+            CheckSpin = 14,
+            Spin = 15,
+            DiagonalBlown = 16,
+            WindS = 17,
+            WindL = 18,
+            SnatchRelase = 19,
+            StraightBlown = 20,
+            Tremor = 21,
+            Inhale = 22,
+            MotionContinue = 23,
+            Explosion = 24
+        } DamageType;
+    }
+}
 
 void align(uint alignment) { 
     while (FTell() % alignment != 0 && FTell() < FileSize()) 
@@ -167,63 +193,102 @@ typedef enum <uint32> {
 	not_init,
 	class_not_found,
 	out_of_range,
+	Undefined_tid,
+	Object_tid,
+	Action_tid,
+	Struct_tid,
+	NativeObject_tid,
+	Resource_tid,
+	UserData_tid,
 	Bool_tid,
-	Capsule_tid,
-	Color_tid,
+	C8_tid,
+	C16_tid,
+	S8_tid,
+	U8_tid,
+	S16_tid,
+	U16_tid,
+	S32_tid,
+	U32_tid,
+	S64_tid,
+	U64_tid,
 	F32_tid,
 	F64_tid,
+	String_tid,
+	MBString_tid,
+	Enum_tid,
+	Uint2_tid,
+	Uint3_tid,
+	Uint4_tid,
+	Int2_tid,
+	Int3_tid,
+	Int4_tid,
 	Float2_tid,
 	Float3_tid,
 	Float4_tid,
-	GameObjectRef_tid,
-	Guid_tid,
-	Int2_tid,
-	LineSegment_tid,
+	Float3x3_tid,
+	Float3x4_tid,
+	Float4x3_tid,
+	Float4x4_tid,
+	Half2_tid,
+	Half4_tid,
+	Mat3_tid,
 	Mat4_tid,
-	OBB_tid,
-	Object_tid,
-	Point_tid,
-	Quaternion_tid,
-	Range_tid,
-	RangeI_tid,
-	Resource_tid,
-	RuntimeType_tid,
-	S16_tid,
-	S32_tid,
-	S64_tid,
-	S8_tid,
-	Size_tid,
-	Sphere_tid,
-	String_tid,
-	String4A4_tid,
-	Struct_tid,
-	U16_tid,
-	U32_tid,
-	U64_tid,
-	U8_tid,
-	UserData_tid,
 	Vec2_tid,
 	Vec3_tid,
 	Vec4_tid,
-	UndefinedType_tid,
-	UndefinedTypeList_tid,
+	VecU4_tid,
+	Quaternion_tid,
+	Guid_tid,
+	Color_tid,
+	DateTime_tid,
+	AABB_tid,
+	Capsule_tid,
+	TaperedCapsule_tid,
+	Cone_tid,
+	Line_tid,
+	LineSegment_tid,
+	OBB_tid,
+	Plane_tid,
+	PlaneXZ_tid,
+	Point_tid,
+	Range_tid,
+	RangeI_tid,
+	Ray_tid,
+	RayY_tid,
+	Segment_tid,
+	Size_tid,
+	Sphere_tid,
+	Triangle_tid,
+	Cylinder_tid,
+	Ellipsoid_tid,
+	Area_tid,
+	Torus_tid,
+	Rect_tid,
+	Rect3D_tid,
+	Frustum_tid,
+	KeyFrame_tid,
+	Uri_tid,
+	GameObjectRef_tid,
+	RuntimeType_tid,
+	Sfix_tid,
+	Sfix2_tid,
+	Sfix3_tid,
+	Sfix4_tid,
+	Position_tid,
+	F16_tid,
+	End_tid,
+	Data_tid
 } TypeIDs;
 
 typedef struct VARDATA(uint algn) {
-    local uint alignment = algn;
+    local ubyte alignment = algn;
     local uint offset = getAlignedOffset(FTell(), algn);
     local uint varSz = offset; //placeholder
-    local int padding = offset - FTell();
-    if (ShowAlignment) {
-        local string fieldName = parentof(this).fieldName;
-        local string fieldOrgTypeName = parentof(this).fieldOrgTypeName;
-        local string fieldDataType = parentof(this).fieldDataType;
-        local string fieldElementType = parentof(this).fieldElementType;
-        local TypeIDs fieldType =  parentof(this).fieldType;
-        local ushort elementSize = parentof(this).elementSize;
-        local ubyte isList = parentof(this).isList;
-    }
-    local int lvl <hidden=true> = getLevel(FTell());
+    local ubyte padding = offset - FTell();
+    local ushort lvl <hidden=true>;
+    if (exists(parentof(this).lvl)) 
+        lvl = parentof(this).lvl;
+    else lvl = getLevel(FTell());
     
     if (offset > FTell()) {
         while (FTell() != offset) {
@@ -323,10 +388,6 @@ void setAlignment(uint algn) {
 }
 
 int getLevel(uint offset) {
-    if (!finished) return level;
-    if (!exists(this.RSZHeader))
-        if (exists(parentof(this).lvl)) return parentof(this).lvl;
-        else if (exists(parentof(parentof(this)).lvl)) return parentof(parentof(this)).lvl;
     local int L = 0;
     for (L=0; L<level; L++)
         if (offset >= startof(RSZFile[L].Data) && offset < startof(RSZFile[L].Data) + sizeof(RSZFile[L].Data))
@@ -353,8 +414,10 @@ typedef struct {
         if (exists(Header.infoTbl.Guid))
             for (o=0; o<Header.infoCount; o++)
                 if ( TranslateGUID(Header.infoTbl[o].Guid.uuid) == Guid) {
-                    local uint lvl = getLevel(startof(g));
-                    if (exists(parentof(g).lvl)) lvl = parentof(g).lvl;
+                    local ushort lvl <hidden=true>;
+                    if (exists(parentof(g).lvl)) 
+                        lvl = parentof(g).lvl;
+                    else lvl = getLevel(startof(g));
                     if (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[Header.infoTbl[o].id]].Name.data))
                         SPrintf(Guid, "%s[%u] -- %s", RSZFile[lvl].RawData.RSZ[ObjectTable[Header.infoTbl[o].id]].Name.data, RSZFile[lvl].ObjectTable[Header.infoTbl[o].id], Guid);
                     else if (exists(RSZFile[lvl]))
@@ -637,7 +700,7 @@ void redetectStringBehind() {
             FSkip(-2);
         FSkip(-4);
         if (pos == FTell() || !isValidString(FTell()) || (sizeof( ReadWString(FTell()+4)) + FTell() <= pos) ) {
-            Printf("Aborting string redetection from %u to %u\n",  pos, FTell()); 
+            //Printf("Aborting string redetection from %u to %u\n",  pos, FTell()); 
             FSeek(pos);
         } else if (FTell() < pos) {
             SetForeColor(cYellow);
@@ -672,7 +735,8 @@ void redetectString() {
 
 void ForceWriteString(uint tell, uint maxSize, wstring str) {
     OverwriteBytes(tell, maxSize, 0); 
-    WriteWString(tell, str); 
+    if (str != " ")
+        WriteWString(tell, str); 
 }
 
 typedef ubyte Bool <read=ReadBOOL, write=WriteBOOL>;
@@ -718,251 +782,194 @@ typedef ubyte Bool <read=ReadBOOL, write=WriteBOOL>;
         }
     }*/
 
-void enums(){
-    if (fieldName == "DmgType") {
-        FSkip(-4);
-        enum { 
-            None = -1,
-            Minimum = 0,
-            NormalS = 1,
-            NormalL = 2,
-            NormalLL = 3,
-            Down = 4,
-            DownBound = 5,
-            Slam = 6,
-            SlamBound = 7,
-            Upper = 8,
-            HyperUpper = 9,
-            HyperUpperAir = 10,
-            Blown = 11,
-            Collapse = 12,
-            RollingUpper = 13,
-            CheckSpin = 14,
-            Spin = 15,
-            DiagonalBlown = 16,
-            WindS = 17,
-            WindL = 18,
-            SnatchRelase = 19,
-            StraightBlown = 20,
-            Tremor = 21,
-            Inhale = 22,
-            MotionContinue = 23,
-            Explosion = 24
-        } DamageType;
-    }
-}
-
-
 //main typedef for RSZ chunks:
 
 typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
+    local uint32 classHash <hidden=true> = classHash;
+    local ubyte fieldIndex <hidden=true> = fieldIndex;
     local string fieldName <hidden=true> = GetFieldName(classHash, fieldIndex);
-    local string fieldOrgTypeName <hidden=true> = GetFieldOrgTypeName(classHash, fieldIndex);
     local string fieldDataType <hidden=true> = GetFieldTypeName(classHash, fieldIndex);
-    local string fieldElementType <hidden=true> = fieldDataType;//GetElementTypeName(classHash, fieldIndex);
     local TypeIDs fieldType <hidden=true> = GetFieldType(classHash, fieldIndex);
-    local uint32 elementSize <hidden=true> = SmartGetFieldSize(classHash, fieldIndex); //(fieldType >> 32) & 0xFFFF;
-    local uint32 align <hidden=true> = SmartGetFieldAlignment(classHash, fieldIndex); //(fieldType >> 48) & 0x7FFF;
-    local ubyte isList <hidden=true> = GetFieldArrayState(classHash, fieldIndex); //(fieldType >> 63) & 0x01;
-    local int lvl <hidden=true> = getLevel(FTell());
-    if (elementSize == 0xFFFFFFFF)
-        elementSize = 4;
-    
-    if (fieldType == ukn_type && fieldElementType == "ObjectList") //find(fieldElementType,"bject") != -1
-        fieldType = Object_tid;
-    
-    if (find((wstring)fieldElementType, "List4A4") != -1)
-        fieldElementType = SubStr( fieldElementType, 7, sizeof(fieldElementType)-7);
-    else if (find((wstring)fieldElementType, "List") != -1)
-        fieldElementType = SubStr( fieldElementType, 0, sizeof(fieldElementType)-5);
-    
-    if (elementSize == 0 || find((wstring)fieldElementType, "String") != -1)
-        elementSize = 4;
+    local ushort elementSize <hidden=true> = GetFieldSize(classHash, fieldIndex);
+    local ubyte align <hidden=true> = GetFieldAlignment(classHash, fieldIndex);
+    local ubyte isList <hidden=true> = GetFieldArrayState(classHash, fieldIndex);
+    local ushort lvl <hidden=true>;
+    if (exists(parentof(this).lvl)) 
+        lvl = parentof(this).lvl;
+    else 
+        lvl = getLevel(FTell());
 
-    if(fieldType != ukn_error && fieldType != not_init && fieldType != class_not_found && fieldType != out_of_range ){ //&& fieldType != game_not_supported //&& fieldType != ukn_type
-        if ((isList || find((wstring)fieldOrgTypeName, "Generic.List") != -1) && !exists(parentof(this).Count)) {
-            fieldDataType = "List";
-			setAlignment(4);
-            if (!ShowChildRSZs)
-                uint Count <hidden=true>;
-            else
-			    uint Count; //<write=WriteCount>;
-			setSize();
-            if (Count && Count * elementSize <= FileSize() - FTell() && !detectedString(FTell())) //
-			    struct RSZVariable var(classHash, fieldIndex)[Count];
-		} else {
-			switch (fieldType) {
-				case Bool_tid:
-					setAlignment(align);
-					Bool data;
-					break;
-				case Color_tid:
-					setAlignment(align);
-					ubyte R, G, B, A;
-					break;
-				case F32_tid:
-					fieldDataType = "Float";
-					setAlignment(align);
-					float data;
-					break;
-				case F64_tid:
-					fieldDataType = "Double";
-					setAlignment(align);
-					double data;
-					break;
-				case Float2_tid:
-					setAlignment(align);
-					float data <name="float R">, data <name="float S">;
-					break;
-				case Float3_tid:
-					setAlignment(align);
-					float data <name="float x">, data <name="float y">, data <name="float z">;
-					break;
-				case Float4_tid:
-					setAlignment(align);
+    if ((isList) && !exists(parentof(this).Count)) {
+		setAlignment(4);
+        if (!ShowChildRSZs)
+            uint Count <hidden=true>;
+        else uint Count;
+		setSize();
+        if (Count && Count * elementSize <= FileSize() - FTell() && !detectedString(FTell())) 
+			struct RSZVariable var(classHash, fieldIndex)[Count];
+	} else {
+		switch (fieldType) {
+			case Bool_tid:
+				setAlignment(align);
+				Bool data;
+				break;
+			case Color_tid:
+				setAlignment(align);
+				ubyte R, G, B, A;
+				break;
+			case F32_tid:
+				fieldDataType = "Float";
+				setAlignment(align);
+				float data;
+				break;
+			case F64_tid:
+				fieldDataType = "Double";
+				setAlignment(align);
+				double data;
+				break;
+			case Float2_tid:
+				setAlignment(align);
+				float data <name="float R">, data <name="float S">;
+				break;
+			case Float3_tid:
+				setAlignment(align);
+				float data <name="float x">, data <name="float y">, data <name="float z">;
+				break;
+			case Quaternion_tid:
+			case Float4_tid:
+				setAlignment(align);
+				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
+				break;
+			case GameObjectRef_tid:
+            case Guid_tid:
+            case Uri_tid:
+				setAlignment(align);
+				rGUID Guid;
+                break;
+            case OBB_tid:
+            case Capsule_tid:
+            case LineSegment_tid:
+			case Mat4_tid:
+				setAlignment(align);
+				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
+				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
+                if (fieldType == Capsule_tid) {
+                    float data <name="float r">;
+                } else if (fieldType != LineSegment_tid) {
 					float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-					break;
-				case GameObjectRef_tid:
-                case Guid_tid:
-					setAlignment(align);
-                    //redetectGuid();
-					rGUID Guid;
-                    break;
-                case OBB_tid:
-                case Capsule_tid:
-				case Mat4_tid:
-					setAlignment(align);
 					float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-					float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-                    if (fieldType == Capsule_tid) {
-                        float data <name="float r">;
-                    } else if (fieldType != LineSegment_tid) {
-					    float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-					    float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-                        if (fieldType == OBB_tid)
-                            float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-                    }
-					break;
-				case UserData_tid:
-                case Object_tid:
-                    setAlignment(align);
-                    if (!ShowChildRSZs)
-                        uint ObjectIndex <hidden=true>;
-                    else
-			            uint ObjectIndex;
-                    if (fieldType == UserData_tid) {
-                        if ((RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) 
-                        && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs)) {
-                            FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs);
-                            struct RSZMagic UserData <open=true, size=52>;
-                            FSeek(startof(ObjectIndex)+4);
-                            checkUseSpacers();
-                            break;
-                        } else if (exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx)) {
-                            FSkip(-1);
-                            struct StringRead path ( (startof(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx])+8), startof(RSZFile[lvl].RSZHeader));
-                            break;
-                        } 
-                    } else if (fieldType == Object_tid && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
-						FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])); 
-						struct RSZInstance RSZ <open=true, size=SizeRSZInstance>;
-						FSeek(startof(ObjectIndex)+4);
+                    if (fieldType == OBB_tid)
+                        float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
+                }
+				break;
+			case UserData_tid:
+            case Object_tid:
+                setAlignment(align);
+                if (!ShowChildRSZs)
+                    uint ObjectIndex <hidden=true>;
+                else
+			        uint ObjectIndex;
+                if (fieldType == UserData_tid) {
+                    if ((RSZVersion == "DMC5" || RSZVersion == "RE2") && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) 
+                    && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs)) {
+                        FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].dataOffs);
+                        struct RSZMagic UserData <open=true, size=52>;
+                        FSeek(startof(ObjectIndex)+4);
                         checkUseSpacers();
-					}
-					break;
-				case Point_tid:
-					setAlignment(align);
-					float data <name="float x">, data <name="float y">;
-					break;
-				case Quaternion_tid:
-					setAlignment(align);
-					float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
-					break;
-				case Range_tid:
-					setAlignment(align);
-					float data <name="float R">, data <name="float S">;
-					break;
-				case RangeI_tid:
-					setAlignment(align);
-					int data <name="int R">, data <name="int S">;
-					break;
-				case RuntimeType_tid:
-					setAlignment(align);
-					uint size;
-                    if (size)
-					    char data[size];
-					break;
-				case S16_tid:
-					setAlignment(align);
-					short data;
-					break;
-				case S32_tid:
-					fieldDataType = "Int";
-					setAlignment(align);
-					int data;
-                    enums();
-					break;
-				case S64_tid:
-					fieldDataType = "Int64";
-					setAlignment(align);
-					int64 data;
-					break;
-				case S8_tid:
-					fieldDataType = "Byte";
-					setAlignment(align);
-					byte data;
-					break;
-				case Size_tid:
-					fieldDataType = "Size";
-					setAlignment(align);
-					uint data;
-					break;
-				/*case Sphere_tid:
-					setAlignment(align);
-					uint data;
-					break;
-				case Struct_tid:
-					setAlignment(align);
-					uint data;
-					break;*/
-				case U16_tid:
-					fieldDataType = "UShort";
-					setAlignment(align);
-					ushort data;
-					break;
-				case U32_tid:
-					fieldDataType = "UInt";
-					setAlignment(align);
-					uint data;
-					break;
-				case U64_tid:
-					fieldDataType = "UInt64";
-					setAlignment(align);
-					uint64 data;
-					break;
-				case U8_tid:
-					fieldDataType = "UByte";
-					setAlignment(align);
-					ubyte data;
-					break;
-				case Vec2_tid:
-					setAlignment(align);
-					float data <name="float x">, data <name="float y">;
-					FSkip(8);
-					break;
-				case Vec3_tid:
-					setAlignment(align);
-                    float data <name="float x">, data <name="float y">, data <name="float z">;
-					FSkip(4);
-					break;
-				case Int2_tid:
-                    setAlignment(align);
-                    int32 data <name="int x">, data <name="int y">;
-                    break;
-                case UndefinedType_tid:
-                case UndefinedTypeList_tid:
-                    setAlignment(align);
-                    if (elementSize == 1) {
+                        break;
+                    } else if (exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx)) {
+                        FSkip(-1);
+                        struct StringRead path ( (startof(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx])+8), startof(RSZFile[lvl].RSZHeader));
+                        break;
+                    } 
+                } else if (fieldType == Object_tid && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
+					FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])); 
+					struct RSZInstance RSZ <open=true, size=SizeRSZInstance>;
+					FSeek(startof(ObjectIndex)+4);
+                    checkUseSpacers();
+				}
+				break;
+			case Point_tid:
+				setAlignment(align);
+				float data <name="float x">, data <name="float y">;
+				break;
+			case Range_tid:
+				setAlignment(align);
+				float data <name="float R">, data <name="float S">;
+				break;
+			case RangeI_tid:
+				setAlignment(align);
+				int data <name="int R">, data <name="int S">;
+				break;
+			case RuntimeType_tid:
+				setAlignment(align);
+				uint size;
+                if (size)
+					char data[size];
+				break;
+			case S16_tid:
+				setAlignment(align);
+				short data;
+				break;
+			case S32_tid:
+				fieldDataType = "Int";
+				setAlignment(align);
+				int data;
+				break;
+			case S64_tid:
+				fieldDataType = "Int64";
+				setAlignment(align);
+				int64 data;
+				break;
+			case S8_tid:
+				fieldDataType = "Byte";
+				setAlignment(align);
+				byte data;
+				break;
+			case Size_tid:
+				fieldDataType = "Size";
+				setAlignment(align);
+				uint data;
+				break;
+			case U16_tid:
+				fieldDataType = "UShort";
+				setAlignment(align);
+				ushort data;
+				break;
+			case U32_tid:
+				fieldDataType = "UInt";
+				setAlignment(align);
+				uint data;
+				break;
+			case U64_tid:
+				fieldDataType = "UInt64";
+				setAlignment(align);
+				uint64 data;
+				break;
+			case U8_tid:
+				fieldDataType = "UByte";
+				setAlignment(align);
+				ubyte data;
+				break;
+			case Vec2_tid:
+				setAlignment(align);
+				float data <name="float x">, data <name="float y">;
+				FSkip(8);
+				break;
+			case Vec3_tid:
+				setAlignment(align);
+                float data <name="float x">, data <name="float y">, data <name="float z">;
+				FSkip(4);
+				break;
+			case Int2_tid:
+                setAlignment(align);
+                int32 data <name="int x">, data <name="int y">;
+                break;
+            case Data_tid:
+            case ukn_type: 
+                setAlignment(align);
+                if (find((wstring)fieldDataType, "tring") == -1) { //if NOT a string:
+                    if (elementSize == 1 ) { 
                         fieldDataType = "Byte";
                         byte data;
                     } else if (elementSize == 2) {
@@ -1018,81 +1025,65 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     } else {
                         ubyte data[elementSize];
                     }
-                    if (fieldDataType == "")
-                        fieldDataType = "Data";
                     break;
-				case ukn_type: 
-                    if (fieldElementType == "Uri" || fieldElementType == "GameObjectRef") {
-					    setAlignment(align);
-					    rGUID Guid;
-					    break;
-                    } else if (fieldElementType == "Int3") {
-                        fieldDataType = "Int3"; 
-                        setAlignment(align);
-                        int32 data <name="int x">, data <name="int y">, data <name="int z">;
-                        break;
-                    } else if (find((wstring)fieldElementType, "tring") == -1) { //if ukn_type String, continue on to regular string  
-                        setAlignment(align);
-                        if ((elementSize % 4) == 0)
-                            float data[(uint)(elementSize / 4)];
-                        else ubyte data[elementSize];
-					    break;
-                    } 
-				case Resource_tid:
-				case String_tid:
-				case String4A4_tid:
-					fieldDataType = "String";
-                    FSeek(getAlignedOffset(FTell(), 4));
-                    redetectStringBehind();
-					FSeek(getAlignedOffset(FTell(), 4)); 
-                    if (isValidString(FTell()) && ReadUInt(FTell()) != 0)
-                        broken=false;
-                    else redetectString();
-                    setAlignment(align);
-					uint size;
-                    if (size && FTell() + size * 2 <= FileSize() ) //&& isValidString(FTell()-4)
-					    wchar_t data[size];
-                    if (size > 0 && !exists(data) && !detectedFloat(FTell()-4)) 
-                        setAsBroken();
-                    local ubyte isString <hidden=true> = TRUE;
-					break;
-				default:
-					Printf("%u Unknown type in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", FTell(), GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
-                    if (elementSize % 4 == 0)
-                        float data[elementSize/4];
-                    else
-                        ubyte data[elementSize];
-					break;
-			}
+                } //if it IS a string, don't break and continue on:
+            
+			case Resource_tid:
+			case String_tid:
+                fieldType = String_tid;
+				fieldDataType = "String";
+                FSeek(getAlignedOffset(FTell(), 4));
+                redetectStringBehind();
+				FSeek(getAlignedOffset(FTell(), 4)); 
+                if (isValidString(FTell()) && ReadUInt(FTell()) != 0)
+                    broken=false;
+                else redetectString();
+                setAlignment(align);
+				uint size;
+                if (size && FTell() + size * 2 <= FileSize() )
+					wchar_t data[size];
+                if (size > 0 && !exists(data) && !detectedFloat(FTell()-4)) 
+                    setAsBroken();
+                local ubyte isString <hidden=true> = TRUE;
+				break;
+			default:
+				Printf("%u Unknown type in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", FTell(), GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
+                if (elementSize % 4 == 0)
+                    float data[elementSize/4];
+                else
+                    ubyte data[elementSize];
+				break;
+		}
+    }
+    setSize();
+    
+    if (title == "") {
+        if (exists(size) && exists(data) && size > 1) {
+            title = (wstring)data;
+        } else if (exists(this.UserData) && secondTitle == "") { //&& sizeof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title) > sizeof(title)
+            secondTitle = ReadRSZMagic(this.UserData);
+        } else if (fieldIndex == 0 && secondTitle == "" && exists(ObjectIndex) && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) && RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title != "") {
+            secondTitle = RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title;
+            //if (fieldIndex == 0)
+            //    title = secondTitle;
+        } else if (secondTitle == "" && exists(this.Guid) && ReadUInt64(startof(Guid)) != 0) {
+            secondTitle = ReadrGUID(Guid);
         }
-        setSize();
-        
-        if (title == "") {
-            if (exists(data) && exists(size) && size > 1) {
-                title = (wstring)data;
-            } else if (exists(this.UserData) && secondTitle == "") { //&& sizeof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title) > sizeof(title)
-                secondTitle = ReadRSZMagic(this.UserData);
-            } else if (exists(ObjectIndex) && ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) && secondTitle == "" && RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title != "") {
-                secondTitle = RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].title;
-                if (fieldIndex == 0)
-                    title = secondTitle;
-            } else if (secondTitle == "" && exists(Guid) && ReadUInt64(startof(Guid)) != 0) {
-                secondTitle = ReadrGUID(Guid);
-            }
-        }
-        
-        if (fieldDataType == "String" && exists(data) && find((wstring)data, "/") != -1 && FileNameGetExtension((wstring)data) != ".json") {
-            local wstring fullPath <hidden=true>;
-            ReadRSZPath((wstring)data);
-        }
-    }    
+    }
+    
+    if (fieldDataType == "String" && exists(data) && find((wstring)data, "/") != -1 && FileNameGetExtension((wstring)data) != ".json") {
+        local wstring fullPath <hidden=true>;
+        ReadRSZPath((wstring)data);
+    }
 };
 
-typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=ReadRSZVariable, write=WriteRSZVariable, comment=ReadRSZVariableComment>;
+typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=ReadRSZVariable, write=WriteRSZVariable>; //, comment=ReadRSZVariableComment
 
     string ReadRSZVariableName(RSZVariable &r) { 
-        if (r.fieldDataType == "List") {
-            return r.fieldDataType + " (" + r.fieldElementType + ") " + r.fieldName;
+        if (r.isList) {
+            if ((exists(r.var[0]) && exists(r.var[0].ObjectIndex) && r.var[0].ObjectIndex != 0) || exists(r.var[0].UserData) )
+                return "List" + " (" + r.fieldDataType + ") *" + r.fieldName;
+            return "List" + " (" + r.fieldDataType + ") " + r.fieldName;
         } else if (exists(r.ObjectIndex) && exists(parentof(r).fieldDataType) && parentof(r).fieldDataType == "List") {
             string s; 
             SPrintf(s, "%s[%u]", RSZFile[r.lvl].Data.RawData.RSZ[r.ObjectIndex].name, r.ObjectIndex);
@@ -1100,6 +1091,8 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
         } else if (r.fieldDataType != "") {
             if ((exists(r.RSZ) && r.ObjectIndex != 0) || exists(r.UserData) )
                 return r.fieldDataType + " *" + r.fieldName; 
+            else if (r.fieldDataType + " " + r.fieldName == "Byte v0")
+                return "Byte v0 (isEnabled)";
             return r.fieldDataType + " " + r.fieldName;  
         } else return r.fieldName; 
     }
@@ -1109,12 +1102,12 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
         if (exists(r.data))
             if (sizeof(s) <= sizeof(r.data)) {
                 ForceWriteString(startof(r.data), sizeof(r.data), s);
-                r.data = s;
+                //r.data = s;
                 return;
-            } else if (!broken)     
-                DeleteBytes(startof(r.data), sizeof(r.data));
+            } //else if (!broken)     
+              //  DeleteBytes(startof(r.data), sizeof(r.data));
         
-        if (!broken) {
+        if (false ) { //&& !broken //disabled
             InsertBytes(startof(r.size)+4, sizeof(s) - 2, 0); 
             WriteWString(startof(r.size)+4, s); 
             local int sizeChange = (((sizeof(s)-2)/2) - r.size) * 2;
@@ -1170,22 +1163,24 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     break;
 		        case Resource_tid:
                 case String_tid:
-                case String4A4_tid:
                     if (exists(r.data))
                         return r.data;
                     break;
                 case Float2_tid:
                 case Vec2_tid:
                 case Point_tid:
+                case Range_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
                     break;
                 case Vec3_tid:
+                case Float3_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g]", r.data[0], r.data[1], r.data[2]);
                     break;
                 case Vec4_tid:
                 case Mat4_tid:
+                case Float4_tid:
 				case Quaternion_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
@@ -1195,38 +1190,35 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     if (exists(r.Guid))
                         s = ReadrGUID(r.Guid);
                     break;
-                case UndefinedType_tid:
-                case UndefinedTypeList_tid:
-                    if (exists(r.data) && r.elementSize == 1 || r.fieldOrgTypeName == "Data1A1") {
+                case ukn_type:
+                case Data_tid:
+                    if (exists(r.data) && r.elementSize == 1 ) { //|| r.fieldOrgTypeName == "Data1A1"
                         if (r.data == 1) {
                             s = "True";
                         } else if (r.data == 0) {
                             s = "False";
                         } else 
                             SPrintf(s, "%i", r.data);
-                    } else if (exists(r.data) && find((wstring)r.fieldElementType, "Data4A4") != -1) {
+                    } else if (exists(r.data) && r.elementSize == 4) {
                         if (exists(r.data_As_Int))
                             SPrintf(s, "%f", r.data);
                         else if (Abs(r.data) > 1000000) 
                             SPrintf(s, "%X", r.data);    
                         else 
                             SPrintf(s, "%i", r.data);
-                    } else if (r.fieldOrgTypeName == "Data8A8") {
+                    } else if (exists(r.data) && r.elementSize == 8) {
                         if (detectedFloat(FTell()) || detectedFloat(FTell()+4))
                             SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
                         else
                             SPrintf(s, "%Li", r.data);
-                    } else if (exists(r.Guid) && r.fieldElementType == "Data16A8") {
-                        s = ReadrGUID(r.Guid);
-                    } else if (r.elementSize == 64) {
+                    } else if (r.elementSize == 16) {
+                        if (exists(r.Guid))
+                            s = ReadrGUID(r.Guid);
+                        else if (exists(r.data))
+                            SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
+                    } else if (exists(r.data) && r.elementSize == 64) {
                         SPrintf(s, "[%g, %g, %g, %g]", r.data[12], r.data[13], r.data[14], r.data[15]);
-                    } else if (exists(r.data) && find((wstring)r.fieldElementType, "Data16") != -1) {
-                        SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
-                    } 
-                    break;
-                case ukn_type:
-                    if (exists(r.Guid))
-                        s = ReadrGUID(r.Guid);
+                    }
                     break;
                 default:
                     break;
@@ -1234,9 +1226,9 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
         return s;
     }
 
-    wstring ReadRSZVariableComment(RSZVariable &r) {
-        return r.fieldOrgTypeName;
-    }
+    //wstring ReadRSZVariableComment(RSZVariable &r) {
+    //    return r.fieldOrgTypeName;
+    //}
 
     void WriteRSZVariable(RSZVariable &r, wstring s) {
         if (exists(r.fullPath) && r.fullPath != "" && sizeof(s) <= 6) {
@@ -1265,7 +1257,6 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     WriteUInt64(pos, Atoi(s)); break;
                 case F32_tid:
                     WriteFloat(pos, Atof(s)); break;
-                case String4A4_tid:
                 case String_tid:
                 case Resource_tid:
                     if (exists(r.data))
@@ -1282,12 +1273,14 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                     writeRSZArray(r, s, 3, 4);
                     break;
                 case Vec4_tid:
+                case Float4_tid:
                 case Quaternion_tid:
                     writeRSZArray(r, s, 4, 4);
                     break;
-                case UndefinedType_tid:
+                case Data_tid:
+                case ukn_type:
                     s = Lower(s);
-                    if (exists(r.data) && r.elementSize == 1 || r.fieldOrgTypeName == "Data1A1") {
+                    if (exists(r.data) && r.elementSize == 1) {
                         if (s == "true") {
                             r.data = 1;
                         } else if (s == "false") {
@@ -1297,11 +1290,10 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
                         if (exists(data_As_Int)) 
                             WriteFloat(FTell(), Atof(s));
                         else WriteInt(FTell(), Atoi(s));
-                    } else if (find((wstring)r.fieldOrgTypeName, "String") != -1) {
+                    } else if (find((wstring)r.fieldDataType, "tring") != -1) {
         	            WriteRSZString(r, s);
                     } else if (r.fieldDataType == "Vec4") {
                         writeRSZArray(r, s, 4, 4);
-					    //SScanf(s, "%g %g %g %g", r.data[0], r.data[1], r.data[2], r.data[3]);//
                     }
                     break;
                 default:
@@ -1334,42 +1326,55 @@ typedef Variable RSZVariable <optimize=false, name=ReadRSZVariableName, read=Rea
     }
 
 typedef struct {
-    local int lvl <hidden=true> = getLevel(FTell()); //doesnt work with on-demand structs
-    if (exists(parentof(this).lvl)) lvl = parentof(this).lvl;
+    local ushort lvl <hidden=true>;
+    if (exists(parentof(this).lvl)) 
+        lvl = parentof(this).lvl;
+    else lvl = getLevel(FTell()); //doesnt work with on-demand structs
+    
     local int idx <hidden=true> = i; //doesnt work with on-demand structs
-    if (!exists(parentof(this).rawData) && idx >= RSZFile[lvl].RSZHeader.instanceCount)
+    if (!exists(parentof(parentof(this)).rawData) && idx >= RSZFile[lvl].RSZHeader.instanceCount)
         for (o=1;o<RSZFile[lvl].RSZHeader.instanceCount;o++)
             if (startof(RSZFile[lvl].Data.RawData.RSZ[o]) == startof(this)) 
                 { idx = o; break; }
     
-    if (exists(parentof(this).arrayOfIDs)) 
-        for (o=0;o<parentof(this).counter;o++)
-            if (arrayOfOffsets[o] == startof(this))
-                idx = arrayOfIDs[o];
-            else if (arrayOfOffsets[o] > startof(this))
-                break;
-    
     if (exists(parentof(this).ObjectIndex) ) {
         idx = parentof(this).ObjectIndex;  
-        if (idx && GetFieldCount(hash) == 0xFFFFFFFF) {
-            ParseJson(JsonPath); Printf("\nParsing JSON %s\n", JsonPath);
-        }
+    } else if (exists(parentof(this).RSZIdx) )
+        idx = parentof(this).RSZIdx;
+    if (!IsInitialized() ) { //|| GetFieldCount(RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash) == 0xFFFFFFFF
+        Printf("Not initialized at %u", FTell());
+        ParseJson(JsonPath);  Printf("\nParsing JSON %s\n", JsonPath);
     }
-
+    
     local string name <hidden=true> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.HashName;
     local wstring title <hidden=true>; 
     local wstring secondTitle <hidden=true>;
     local uint hash <hidden=true, format=hex> = RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash;
     local ubyte isUserData <hidden=true>;
-    
+
     if (exists(RSZFile[lvl].RSZUserDataInfos))
         for (j=0; j<RSZFile[lvl].RSZHeader.userdataCount; j++)
             if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].typeId == hash) 
                 { isUserData = TRUE; break; }
-    
+
     if (name == "Unknown Class!"){
         Printf("Hash %X not found in ClassHashDecoder!\n", hash);
         byte skip <hidden=true>;
+    } else if (hash == 0xF767C93F) { //"via.physics.UserData"
+        for (j=idx+1; j<RSZFile[lvl].RSZHeader.instanceCount; j++) {
+            if (finished && RSZFile[lvl].InstanceInfos.instanceInfo[j].typeId.Hash == 0xF767C93F ) {
+                local uint ObjectIndex <hidden=true> = j - 1;
+                FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]));
+                if (!exists(parentof(parentof(this)).idx) || (parentof(parentof(this)).idx != j - 1)) {
+                    struct RSZInstance RSZ <size=SizeRSZInstance>;
+                    checkUseSpacers();
+                }
+                FSeek(startof(this));
+                break;
+            }
+            if (j > 100)
+                break;
+        }
     } else if (GetFieldCount(hash) == 0xFFFFFFFF && idx) { 
         Printf("Class %u %s not detected in JSON!\n", hash, name);
         byte skip <hidden=true>;
@@ -1403,7 +1408,6 @@ typedef struct {
             title = ReadRSZVariable(var[0]);
     
     if (FTell() - startof(this)  == 0) { 
-        //Printf("empty struct %s %u\n", name, FTell());
         ubyte skipFileData <hidden=true>;
     }
     if (FTell()==startof(this))
@@ -1413,7 +1417,10 @@ typedef struct {
 typedef Instance RSZInstance <name=ReadRSZInstanceName, read=ReadRSZInstance, write=WriteRSZInstance>;
 
     wstring ReadRSZInstanceName(RSZInstance &r) { 
-        local uint lvl = getLevel(startof(r));
+        local ushort lvl <hidden=true>;
+        if (exists(parentof(r).lvl)) 
+            lvl = parentof(r).lvl;
+        else lvl = getLevel(startof(r));
         string s;
         
         if (exists(r.skip) || exists(parentof(r).ObjectIndex) && exists(RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex].skip))
@@ -1441,17 +1448,32 @@ typedef Instance RSZInstance <name=ReadRSZInstanceName, read=ReadRSZInstance, wr
     }
 
     int SizeRSZInstance(RSZInstance &r) { 
-        local uint lvl = getLevel(startof(r));
+        local ushort lvl;
+        if (exists(parentof(r).lvl)) 
+            lvl = parentof(r).lvl;
+        else 
+            lvl = getLevel(startof(r));
+        
+        if (exists(parentof(r).ObjectIndex))
+            return sizeof(RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex]); 
+
         for (k=0; k<RSZFile[lvl].RSZHeader.instanceCount; k++)
-            if (startof(RSZFile[lvl].Data.RawData.RSZ[k]) == startof(r) ) //&& !exists(RSZFile[lvl].Data.RawData.RSZ[k].skipFileData) 
-                return(sizeof(RSZFile[lvl].Data.RawData.RSZ[k])); 
+            if (exists(RSZFile[lvl].Data.RawData.RSZ[k]) && startof(RSZFile[lvl].Data.RawData.RSZ[k]) == startof(r) 
+            && (!exists(RSZFile[lvl].Data.RawData.RSZ[k+1]) || startof(RSZFile[lvl].Data.RawData.RSZ[k+1]) != startof(r)) ) //WTF
+                if (sizeof(RSZFile[lvl].Data.RawData.RSZ[k]) != 0)
+                    return sizeof(RSZFile[lvl].Data.RawData.RSZ[k]); 
+
+        if (exists(parentof(r).tempN))
+            return (sizeof(RSZFile[lvl].Data.RawData.RSZ[i]));
+    
         return 1;
     }
 
     wstring ReadRSZInstance(RSZInstance &r) {
-        local uint lvl = getLevel(startof(r));
+        local ushort lvl;
         if (exists(parentof(r).lvl)) 
             lvl = parentof(r).lvl;
+        else lvl = getLevel(startof(r));
         if (exists(r.skip) || (exists(parentof(r).ObjectIndex) && exists(RSZFile[lvl].Data.RawData.RSZ[parentof(r).ObjectIndex].skip))) {
             return ReadHash(RSZFile[lvl].InstanceInfos.instanceInfo[r.idx].typeId.Hash);
         } else if (exists(r.skipFileData)) {
@@ -1465,7 +1487,7 @@ typedef Instance RSZInstance <name=ReadRSZInstanceName, read=ReadRSZInstance, wr
         } else {
             for (o=1;o<RSZFile[lvl].RSZHeader.instanceCount;o++) 
                 if (startof(RSZFile[lvl].Data.RawData.RSZ[o]) == startof(r) && !exists(RSZFile[lvl].Data.RawData.RSZ[o].skipFileData))
-                    return RSZFile[lvl].Data.RawData.RSZ[o].name;
+                    return RSZFile[lvl].Data.RawData.RSZ[o].title;
         } return "";
     }
 
@@ -1544,8 +1566,12 @@ struct fakeGameObject {
 
 
 struct {
-	uint magic;
+    local uint magic <hidden=true> = ReadUInt(FTell());
+    if (ReadUShort(2) == 0)
+        magic = ReadUInt(FTell()+4);
+	
     if (magic == 4343376) {//50 46 42 00 PFB 
+        uint signature;
 	    int infoCount;
         int resourceCount;
         int grefInfoCount;
@@ -1569,6 +1595,7 @@ struct {
     }
 
     if (magic == 5395285) { //USR 
+        uint signature;
         int resourceCount;
 	    int infoCount;
         int userdataCount;
@@ -1577,6 +1604,7 @@ struct {
 	    uint64 dataOffset;
     }
     if (magic == 1280262994) {//52 43 4F 4C RCOL
+        uint signature;
         int numGroups;
         int numShapes;
         int numUserData;
@@ -1597,6 +1625,7 @@ struct {
         }
     }
     if (magic == 5129043) { // 53 43 4E 00 SCN 
+        uint signature;
         int infoCount;
         int resourceCount;
         int folderCount;
@@ -1622,6 +1651,69 @@ struct {
                 short ukn;
                 int prefabId;
             } infoTbl [infoCount] <read=ReadGRefInfo>;
+    }
+    if (magic == 846423661) { //mfs2
+        uint version;
+        uint signature;
+        FSkip(8);
+        uint64 BHVTstart;
+        uint64 ukn;
+        uint64 ukn;
+        uint64 endData;
+        uint ukn2[4];
+        FSeek(BHVTstart);
+        struct {
+            uint BHVT; //I think this is via.SpeedTree, maybe
+            FSkip(4);
+            uint64 speedTreeOffset;
+            uint64 RSZOffs[11];
+            uint64 stringsOffs;
+            uint64 intOffs[3];
+            uint64 beforeEndData;
+            uint64 beforeStrings;
+            //FSeek(BHVTstart + 8);
+            //uint64 offs[18];
+            //for (o=0; o<18; o++) {
+            //    FSeek(offs[o] + BHVTstart);
+            //    uint test;
+            //}
+            FSeek(speedTreeOffset + BHVTstart);
+            struct {
+                uint itemCount;
+                uint A, B, C;
+                int neg;
+                uint D;
+                uint idCount;
+                struct {
+                    for (o=0; o<idCount; o++) {
+                        uint32 hash <format=hex>;
+                    }
+                } Type0;
+                struct {
+                    for (o=0; o<idCount; o++) {
+                        int32 hash <format=hex>;
+                    }
+                } Type1;
+                struct {
+                    for (o=0; o<idCount; o++) {
+                        int32 hash <format=hex>;
+                    }
+                } Type2;
+                FSeek(getAlignedOffset(FTell(),16));
+                if (RSZVersion == "RE8")
+                    struct {
+                        for (o=0; o<itemCount; o++) {
+                            struct {
+                                int32 ukn[8];
+                                short uknShort;
+                                int32 ukn2[13];
+                                FSeek(startof(ukn[0])+86);                      
+                            } item;
+                        }
+                    } ukn;
+                
+            } BHVT_Hashes;
+        } BHVT;
     }
 }Header;
 
@@ -1673,7 +1765,7 @@ if (Header.magic != 1280262994) { //no RCOL
                     }
                     FSeek(startof(parentId)+4);
                     
-                } PrefabInfo; // <read=ReadPreFab>
+                } PrefabInfo;
         } PrefabInfos;
     }
 
@@ -1694,8 +1786,10 @@ if (Header.magic != 1280262994) { //no RCOL
 }
 
 typedef struct {
-        local uint lvl <hidden=true> = getLevel(FTell());
-	
+        local ushort lvl <hidden=true>;
+        if (exists(parentof(this).lvl)) 
+            lvl = parentof(this).lvl;
+        else lvl = getLevel(FTell());
         uint instanceId <name=ReadObjectName>; 
         uint typeId <format=hex>;   
         if (RSZVersion == "DMC5" || RSZVersion == "RE2") {
@@ -1716,7 +1810,10 @@ typedef struct {
 typedef struct OBJECT (ubyte isFolder)
 {
     local int tempN <hidden=true>, tempJ <hidden=true>, prefabCount <hidden=true>, gChildCount <hidden=true>, fChildCount <hidden=true>, id <hidden=true>;
-    local int lvl <hidden=true> = getLevel(FTell());
+    local ushort lvl <hidden=true>;
+    if (exists(parentof(this).lvl)) 
+        lvl = parentof(this).lvl;
+    else lvl = getLevel(FTell());
     local wstring title <hidden=true>;
     isFolder == true ? (id = FolderInfos.FolderInfo[n].id) : (id = Header.infoTbl[n].id);
     
@@ -1757,7 +1854,7 @@ typedef struct OBJECT (ubyte isFolder)
             i = RSZFile[lvl].ObjectTable[id] + counter;
             tempN = n;
             if (isObject)
-                RSZInstance RSZ;// <size=SizeRSZInstance>;
+                RSZInstance RSZ;// <size=SizeRSZInstance>; //cant use Size= if using `i` to index
             n = tempN;
             counter ++;
         } else break;
@@ -1862,7 +1959,7 @@ typedef struct {
     else 
         RSZHEADER RSZHeader;
 
-    local int lvl <hidden=true> = getLevel(RSZHeader.RSZoffs);     
+    local ushort lvl <hidden=true> = getLevel(RSZHeader.RSZoffs);
     
     FSeek(startof(RSZHeader.userdataOffset)+8);
     if (RSZHeader.objectCount && !ShowChildRSZs && exists(parentof(this)))
@@ -1900,11 +1997,11 @@ typedef struct {
     if (RSZHeader.instanceCount > 1) {
         struct {
             local int isObject <hidden=true>;
-            local int lvl <hidden=true> = getLevel(FTell());
+            local ushort lvl <hidden=true> = parentof(this).lvl;
             struct DATA {
-                if (!IsInitialized()) {
-                    ParseJson(JsonPath); Printf("Parsing JSON %s\n", JsonPath);
-                }
+                if (!IsInitialized())
+                    ParseJson(JsonPath);
+                
                 local int rawData <hidden=true>;
                 local int lvl <hidden=true> = getLevel(FTell());
                 for (i=0; i<RSZFile[lvl].RSZHeader.instanceCount; i++) {
@@ -1954,11 +2051,11 @@ typedef struct {
                     }
                 }
             };
-            DATA RawData;
+            DATA RawData <open=suppress>;
         
             finished = TRUE;
                 
-            if (Nesting) {
+            if (Nesting && Header.magic != 1280262994) { //no RCOL
                 if (exists(Header.infoTbl) && startof(RSZFile[lvl]) == Header.dataOffset) {
                     if (exists(Header.folderCount))
                         for (n=0; n<Header.folderCount; n++) {
@@ -2025,7 +2122,7 @@ typedef struct {
             return m.Data.MainObject[0].title;
         else if (exists(m.Data.MainFolder[0].title))
             return m.Data.MainFolder[0].title;
-        else {//if (exists())
+        else {
             local uint f;
             for (f=0; f<level; f++) {
                 if (startof(RSZFile[f]) == startof(m) && exists(RSZFile[f].ObjectTable) && exists(RSZFile[f].Data.RawData.RSZ[RSZFile[f].ObjectTable[0]].title) ) 
@@ -2036,7 +2133,7 @@ typedef struct {
     }
 
     string ReadObjectName(uint32 &r) { 
-        local uint lvl = parentof(r).lvl;
+        local ushort lvl = parentof(r).lvl;
         local uint32 temp = ReadUInt((startof(RSZFile[lvl].RSZHeader) + RSZFile[lvl].RSZHeader.instanceOffset + 8 * r)); 
         return ReadHashName(temp); 
     }
@@ -2055,10 +2152,7 @@ while (FTell()+4 < FileSize()) {
         finished = false;
         if (level == 1 && !FEof()) 
             { FSkip(-1); BLANK blank; }
-        if (true)//((level == 0 || ShowChildRSZs) && Header.magic != 1414940738)
-            struct RSZMagic RSZFile;
-        else 
-            struct RSZMagic RSZFile <hidden=true>;
+        struct RSZMagic RSZFile;
         level++;
         FSeek(startof(RSZFile) + 4);
     } else FSkip(1);
@@ -2080,74 +2174,63 @@ if (Header.magic == 1280262994) {
             int LayerIndex;
             uint MaskBits;
             uint64 MaskGuidsOffset;
+            
             if (NumMaskGuids) {
                 FSeek(MaskGuidsOffset);
                 rGUID MaskGuids[NumMaskGuids];
                 FSeek(startof(MaskGuidsOffset)+8);
             }
+            
             rGUID LayerGuid;
             FSeek(ShapesTbl);
             if (NumShapes)
-                //struct {
-                    struct RcolShape {
-                        rGUID Guid;
-                        StringRead Name(-1, 0);
-                        uint NameHash <format=hex>;
-                        int UserDataIndex;
-                        int LayerIndex;
-                        int Attribute;
-                        uint SkipIdBits;
-                        uint IgnoreTagBits;
-                        StringRead primaryJointNameStr(-1, 0);
-                        StringRead secondaryJointNameStr(-1, 0);
-                        uint PrimaryJointNameHash <format=hex>;
-                        uint SecondaryJointNameHash <format=hex>;
-                        enum <uint32>
-                        {
-                            ShapeType_Aabb = 0x0,
-                            ShapeType_Sphere = 0x1,
-                            ShapeType_ContinuousSphere = 0x2,
-                            ShapeType_Capsule = 0x3,
-                            ShapeType_ContinuousCapsule = 0x4,
-                            ShapeType_Box = 0x5,
-                            ShapeType_Mesh = 0x6,
-                            ShapeType_HeightField = 0x7,
-                            ShapeType_StaticCompound = 0x8,
-                            ShapeType_Area = 0x9,
-                            ShapeType_Triangle = 0xA,
-                            ShapeType_SkinningMesh = 0xB,
-                            ShapeType_Cylinder = 0xC,
-                            ShapeType_DeformableMesh = 0xD,
-                            ShapeType_Invalid = 0xE,
-                            ShapeType_Max = 0xF,
-                        } ShapeType;
-                        FSkip(4);
-                        float Parameters[20];
-                        if (UserDataIndex && !exists(parentof(parentof(this)))) {
-                            FSeek(startof(RSZFile.Data.RawData.RSZ[RSZFile.ObjectTable[UserDataIndex]]));
-                            local int objI <hidden=true> = RSZFile.ObjectTable[UserDataIndex];
-                            local uint counter <hidden=true>, isObject <hidden=true>;
-                            while (exists(RSZFile.Data.RawData.RSZ[objI + counter].name)) {
-                                isObject = FALSE;
-                                for (j=0; j<RSZFile.RSZHeader.objectCount; j++) 
-                                    if (objI + counter == RSZFile.ObjectTable[j]) { isObject = TRUE; break; }
-                                if (  (RSZFile.InstanceInfos.instanceInfo[objI + counter].typeId.HashName != "via.physics.UserData")) {
-                                    FSeek(startof(RSZFile.Data.RawData.RSZ[objI + counter]));
-                                    i = objI + counter;
-                                    if (isObject)
-                                        RSZInstance RSZ; //size=SizeRSZInstance
-                                    counter ++;
-                                    SetForeColor(cNone);
-                                } else break;
-                            }
-                            FSeek(startof(Parameters)+80);
-                        }
-                    } Shape[NumShapes] <read=ReadShape, optimize=false>;
-                //} Shapes;
+                struct RcolShape {
+                    rGUID Guid;
+                    StringRead Name(-1, 0);
+                    uint NameHash <format=hex>;
+                    int UserDataIndex;
+                    int LayerIndex;
+                    int Attribute;
+                    uint SkipIdBits;
+                    uint IgnoreTagBits;
+                    StringRead primaryJointNameStr(-1, 0);
+                    StringRead secondaryJointNameStr(-1, 0);
+                    uint PrimaryJointNameHash <format=hex>;
+                    uint SecondaryJointNameHash <format=hex>;
+                    enum <uint32> {
+                        ShapeType_Aabb = 0x0,
+                        ShapeType_Sphere = 0x1,
+                        ShapeType_ContinuousSphere = 0x2,
+                        ShapeType_Capsule = 0x3,
+                        ShapeType_ContinuousCapsule = 0x4,
+                        ShapeType_Box = 0x5,
+                        ShapeType_Mesh = 0x6,
+                        ShapeType_HeightField = 0x7,
+                        ShapeType_StaticCompound = 0x8,
+                        ShapeType_Area = 0x9,
+                        ShapeType_Triangle = 0xA,
+                        ShapeType_SkinningMesh = 0xB,
+                        ShapeType_Cylinder = 0xC,
+                        ShapeType_DeformableMesh = 0xD,
+                        ShapeType_Invalid = 0xE,
+                        ShapeType_Max = 0xF,
+                    } ShapeType;
+                    FSkip(4);
+                    
+                    float Parameters[20];
+                    if (UserDataIndex) {
+                        local uint RSZIdx <hidden=true> = RSZFile[0].ObjectTable[UserDataIndex];
+                        FSeek(startof(RSZFile[0].Data.RawData.RSZ[RSZFile[0].ObjectTable[UserDataIndex]]));
+                        RSZInstance RSZ <size=SizeRSZInstance>;
+                        FSeek(startof(Parameters)+80);
+                    }
+                } Shape[NumShapes] <read=ReadShape, optimize=false>;
+                
             FSeek(startof(LayerGuid)+16);
             checkUseSpacers();
-        }Group[Header.numGroups] <read=ReadGroup, optimize=false>;
-    }Groups;
+
+        } Group[Header.numGroups] <size=80, read=ReadGroup, optimize=false>;
+    } Groups;
     
     if (exists(Header.ignoreTagTbl) && Header.numIgnoreTags) {
         FSeek(Header.ignoreTagTbl);
@@ -2159,6 +2242,7 @@ if (Header.magic == 1280262994) {
             } IgnoreTag[Header.numIgnoreTags] <read=ReadIgnoreTag, optimize=false>; 
         } IgnoreTags;
     }
+    
     if (exists(Header.autoGenerateJointDescTbl) && Header.numAutoGenerateJoints) {
         FSeek(Header.autoGenerateJointDescTbl);
         struct {
@@ -2169,13 +2253,6 @@ if (Header.magic == 1280262994) {
     if (exists(Header.numRequestSets) && Header.numRequestSets) {
         FSeek(Header.requestSetTbl);
         struct {
-            local uint RCOL[RSZFile.RSZHeader.instanceCount] <hidden=true>;
-            local uint rcolCtr <hidden=true>;
-            for (k=0; k<RSZFile.RSZHeader.instanceCount; k++)
-                if (RSZFile.Data.RawData.RSZ[k].name == "via.physics.UserData") {
-                    RCOL[rcolCtr] = k;
-                    rcolCtr++;
-                }
             for (n=0; n<Header.numRequestSets; n++)
                 struct RcolRequestSet {
                     uint ID;
@@ -2189,35 +2266,13 @@ if (Header.magic == 1280262994) {
                     uint KeyHash <format=hex>;
                     
                     FSeek(startof(Groups.Group[GroupIndex]));
-                    struct RcolGroup Group <read=ReadGroup, size=SizeRcolGroup>;
+                    struct RcolGroup Group <read=ReadGroup, size=80>;
                     
-                    FSeek(startof(RSZFile.Data.RawData.RSZ[RCOL[n]]));
-                    local int objI_OG <hidden=true> = RCOL[n], objI <hidden=true> = objI_OG;
-                    local uint counter <hidden=true>, isObject <hidden=true>, numObjects <hidden=true>;
-                    while (exists(RSZFile.Data.RawData.RSZ[objI + counter].name)) { 
-                        if ( counter == 0 || (RSZFile.InstanceInfos.instanceInfo[objI_OG + counter].typeId.HashName != "via.physics.UserData")) 
-                            counter++;
-                        else break;
-                    }
-                    local int arrayOfIDs[counter] <hidden=true>, arrayOfOffsets[counter]  <hidden=true>;
-                    
-                    counter = 0;
-                    while (exists(RSZFile.Data.RawData.RSZ[objI + counter].name)) {
-                        isObject = FALSE;
-                        for (j=0; j<RSZFile.RSZHeader.objectCount; j++) 
-                            if (objI_OG + counter == RSZFile.ObjectTable[j]) { isObject = TRUE; break; }
-                        if ( counter == 0 || (RSZFile.InstanceInfos.instanceInfo[objI_OG + counter].typeId.HashName != "via.physics.UserData")) {
-                            FSeek(startof(RSZFile.Data.RawData.RSZ[objI_OG + counter]));
-                            objI = objI_OG + counter; i = objI;
-                            arrayOfIDs[counter] = objI;
-                            arrayOfOffsets[counter] = FTell();
-                            if (isObject) 
-                                RSZInstance RSZ <size=SizeRSZInstance>;
-                            
-                            counter++;
-                            SetForeColor(cNone);
-                        } else break;
-                    }
+                    local uint RSZIdx <hidden=true> = RSZFile.ObjectTable[n];
+                    FSeek(startof(RSZFile.Data.RawData.RSZ[RSZIdx]));
+                    RSZInstance RSZ <open=true, size=SizeRSZInstance>;
+
+                    SetForeColor(cNone);
                     FSeek(startof(KeyHash)+8);
                 } RequestSet <name=ReadRequestSetName, read=ReadRequestSet>;
         } RequestSets;
@@ -2228,10 +2283,8 @@ if (Header.magic == 1280262994) {
             return Groups.Group[parentof(g).GroupIndex].Name.String; 
         if (exists(g.Name.String))
             return g.Name.String;  
-        return "";
-    } 
-
-    int SizeRcolGroup(RcolGroup &g) { return 80; } 
+        return ReadWString(ReadUInt64(startof(g)+16));
+    }
 
     wstring ReadShape(RcolShape &s) { return s.Name.String; } 
 

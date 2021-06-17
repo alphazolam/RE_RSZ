@@ -3,14 +3,13 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.1
+//   Version: 0.2
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
 //   History: June 6 2021
 //------------------------------------------------
-local int lv, r, v, a;
-local string oldValue, newValue;
-local int multiply, divide, add;
+local int lv, r, v, a, g;
+local int multiply, divide, add, random;
 
 string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
 if (fieldToChange == "")
@@ -28,14 +27,40 @@ if (changeValue[0] == 42)
     multiply = TRUE;
 else if (changeValue[0] == 47)
     divide = TRUE;
-else if (changeValue[0] == 43)
+else if (changeValue[0] == 126)
     add = TRUE;
-if (multiply || add || divide) 
+else if (changeValue[0] == 0x7E) //~
+    random = TRUE;
+if (multiply || add || divide || random)  {
     changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
+}
+
+string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
+    float values[4];
+    string result = newStr;
+    if (find((wstring)newStr, " ") != -1)  {
+        SScanf( newStr, "%g %g %g %g", values[0], values[1], values[2], values[3] );
+        for (g=0; g<4; g++) {
+            if (exists(r.data[g]))
+                if (multiply) 
+                    values[g] *= r.data[g];
+                else if (divide && value != 0)
+                    values[g] = r.data[g] / values[g];
+                else if (add && value != 0)
+                    values[g] = r.data[g] + values[g];
+        }
+        SPrintf(result, "%g %g %g %g", values[0], values[1], values[2], values[3]);
+    }
+    return result;
+}
 
 void ChangeValue(RSZVariable &r) 
 {
-    if (searchValue == "" || ReadRSZVariable(r) == searchValue) {
+    local string oldValue, newValue;
+    if (exists(r.ObjectIndex)) {
+        Printf("Changing %s value at %u to %s \n", fieldToChange, startof(r.Alignment.varStart), changeValue);
+        r.ObjectIndex = Atoi(changeValue);
+    } else if (searchValue == "" || ReadRSZVariable(r) == searchValue) {
         oldValue = ReadRSZVariable(r);
         if (oldValue[0] == 91) {
             newValue = changeValue;
@@ -47,9 +72,12 @@ void ChangeValue(RSZVariable &r)
             SPrintf(newValue, "%g", Atof(oldValue) / Atof(changeValue));
         } else if (add) {
             SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
+        } else if (random) {
+            SPrintf(newValue, "%g", Random(Atof(changeValue)));
         } else {
             newValue = changeValue;
         }
+        newValue = MakeMultiValue(r, oldValue, newValue);
         Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
     }
