@@ -10,7 +10,7 @@
 //------------------------------------------------
 local int lv, r, v, a, g;
 local int multiply, divide, add, random, not;
-local int inputValue = FALSE; //set this to true and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
 if (inputValue) {
     string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
