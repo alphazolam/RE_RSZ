@@ -823,42 +823,36 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
             }
         }
 	} else {
+        setAlignment(align);
 		switch (fieldType) {
 			case Bool_tid:
-				setAlignment(align);
+				
 				Bool data;
 				break;
 			case Color_tid:
-				setAlignment(align);
 				ubyte R, G, B, A;
 				break;
 			case F32_tid:
 				fieldDataType = "Float";
-				setAlignment(align);
 				float data;
 				break;
 			case F64_tid:
 				fieldDataType = "Double";
-				setAlignment(align);
 				double data;
 				break;
 			case Float2_tid:
-				setAlignment(align);
 				float data <name="float R">, data <name="float S">;
 				break;
 			case Float3_tid:
-				setAlignment(align);
 				float data <name="float x">, data <name="float y">, data <name="float z">;
 				break;
 			case Quaternion_tid:
 			case Float4_tid:
-				setAlignment(align);
 				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
 				break;
 			case GameObjectRef_tid:
             case Guid_tid:
             case Uri_tid:
-				setAlignment(align);
 				rGUID Guid;
                 break;
             case OBB_tid:
@@ -866,7 +860,6 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
             case Capsule_tid:
             case LineSegment_tid:
 			case Mat4_tid:
-				setAlignment(align);
 				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
 				float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
                 if (fieldType == Capsule_tid) {
@@ -880,7 +873,6 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 				break;
 			case UserData_tid:
             case Object_tid:
-                setAlignment(align);
                 if (!ShowChildRSZs)
                     uint ObjectIndex <hidden=true>;
                 else
@@ -906,88 +898,73 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 				}
 				break;
 			case Point_tid:
-				setAlignment(align);
 				float data <name="float x">, data <name="float y">;
 				break;
 			case Range_tid:
-				setAlignment(align);
 				float data <name="float R">, data <name="float S">;
 				break;
 			case RangeI_tid:
-				setAlignment(align);
 				int data <name="int R">, data <name="int S">;
 				break;
 			case RuntimeType_tid:
-				setAlignment(align);
 				uint size;
                 if (size)
 					char data[size];
 				break;
 			case S16_tid:
-				setAlignment(align);
 				short data;
 				break;
 			case S32_tid:
 				fieldDataType = "Int";
-				setAlignment(align);
 				int data;
 				break;
 			case S64_tid:
 				fieldDataType = "Int64";
-				setAlignment(align);
 				int64 data;
 				break;
 			case S8_tid:
 				fieldDataType = "Byte";
-				setAlignment(align);
 				byte data;
 				break;
 			case Size_tid:
 				fieldDataType = "Size";
-				setAlignment(align);
 				uint data;
 				break;
 			case U16_tid:
 				fieldDataType = "UShort";
-				setAlignment(align);
 				ushort data;
 				break;
 			case U32_tid:
 				fieldDataType = "UInt";
-				setAlignment(align);
 				uint data;
 				break;
 			case U64_tid:
 				fieldDataType = "UInt64";
-				setAlignment(align);
 				uint64 data;
 				break;
 			case U8_tid:
 				fieldDataType = "UByte";
-				setAlignment(align);
 				ubyte data;
 				break;
 			case Vec2_tid:
-				setAlignment(align);
 				float data <name="float x">, data <name="float y">;
 				float data <hidden=true>, data <hidden=true>; //FSkip(8);
 				break;
 			case Vec3_tid:
-				setAlignment(align);
                 float data <name="float x">, data <name="float y">, data <name="float z">;
 				float data <hidden=true>; //FSkip(4);
 				break;
 			case Int2_tid:
-                setAlignment(align);
                 int32 data <name="int x">, data <name="int y">;
                 break;
             case Int3_tid:
-                setAlignment(align);
                 int32 data <name="int x">, data <name="int y">, data <name="int z">;
+                break;  
+            case Uint3_tid:
+                uint32 data <name="uint x">, data <name="uint y">, data <name="uint z">;
                 break;
             case Data_tid:
             case ukn_type: 
-                setAlignment(align);
                 if (find((wstring)fieldDataType, "tring") == -1) { //if NOT a string:
                     if (elementSize == 1 ) { 
                         fieldDataType = "Byte";
@@ -1059,7 +1036,6 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                 if (isValidString(FTell()) && ReadUInt(FTell()) != 0)
                     broken=false;
                 else redetectString();
-                setAlignment(align);
                 if (FTell() + 4 <= FileSize()) {
 				    uint size;
                     if (size && FTell() + size * 2 <= FileSize() )
