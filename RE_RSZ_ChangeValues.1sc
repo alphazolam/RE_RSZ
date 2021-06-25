@@ -3,53 +3,60 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.2
+//   Version: 0.3
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: June 6 2021
+//   History: June 26 2021
 //------------------------------------------------
 local int lv, r, v, a, g;
-local int multiply, divide, add, random;
+local int multiply, divide, add, random, not;
+local int inputValue = FALSE; //set this to true and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
-string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
-if (fieldToChange == "")
-    return;
-if (GetSelSize() && GetSelSize() > 64)
-    Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
-string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field", ""));
-
-string msg; SPrintf(msg, "Or leave blank to change all %s values", fieldToChange);
-string searchValue = InputString("Input old value to find", msg, "");
-
-wstring changeValue = InputString("Input New Value", "Example:\n5 = Change to 5\n*1 = Multiply by 1\n\\2 = Divide by 2\n+1.4 = Add 1.4\n+-3 = Subtract 3", "*1");
-Printf("ChangeValue: %s\n", changeValue);
-if (changeValue[0] == 42)
-    multiply = TRUE;
-else if (changeValue[0] == 47)
-    divide = TRUE;
-else if (changeValue[0] == 126)
-    add = TRUE;
-else if (changeValue[0] == 0x7E) //~
-    random = TRUE;
-if (multiply || add || divide || random)  {
-    changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
+if (inputValue) {
+    string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
+    if (fieldToChange == "")
+        return;
+    if (GetSelSize() && GetSelSize() > 64)
+        Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
+    string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field", ""));
+    
+    string msg; SPrintf(msg, "Or leave blank to change all %s values", fieldToChange);
+    string searchValue = InputString("Input old value to find", msg, "");
+    
+    wstring changeValue = InputString("Input New Value", "Example:\n5 = Change to 5\n*1 = Multiply by 1\n\\2 = Divide by 2\n+1.4 = Add 1.4\n+-3 = Subtract 3", "*1");
+    Printf("ChangeValue: %s\n", changeValue);
+} else {
+    string fieldToChange;
+    string instanceToChange;
+    string searchValue;
+    wstring changeValue;
 }
 
 string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
-    float values[4];
     string result = newStr;
+    uint valueSz = 4;
+    if (exists(r.data[7]))
+        valueSz = 8;
+    float values[valueSz];
+    
     if (find((wstring)newStr, " ") != -1)  {
-        SScanf( newStr, "%g %g %g %g", values[0], values[1], values[2], values[3] );
-        for (g=0; g<4; g++) {
+        if (valueSz == 4)
+            SScanf( newStr, "%g %g %g %g", values[0], values[1], values[2], values[3] );
+        else if (valueSz == 8)
+            SScanf( newStr, "%g %g %g %g %g %g %g %g", values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7] );
+        for (g=0; g<valueSz; g++) {
             if (exists(r.data[g]))
                 if (multiply) 
-                    values[g] *= r.data[g];
+                    values[g] = r.data[g] * values[g];
                 else if (divide && value != 0)
                     values[g] = r.data[g] / values[g];
                 else if (add && value != 0)
                     values[g] = r.data[g] + values[g];
         }
-        SPrintf(result, "%g %g %g %g", values[0], values[1], values[2], values[3]);
+        if (valueSz == 4)
+            SPrintf(result, "%g %g %g %g", values[0], values[1], values[2], values[3]);
+        else if (valueSz == 8)
+            SPrintf(result, "%g %g %g %g %g %g %g %g", values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7]);
     }
     return result;
 }
@@ -60,7 +67,7 @@ void ChangeValue(RSZVariable &r)
     if (exists(r.ObjectIndex)) {
         Printf("Changing %s value at %u to %s \n", fieldToChange, startof(r.Alignment.varStart), changeValue);
         r.ObjectIndex = Atoi(changeValue);
-    } else if (searchValue == "" || ReadRSZVariable(r) == searchValue) {
+    } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
         oldValue = ReadRSZVariable(r);
         if (oldValue[0] == 91) {
             newValue = changeValue;
@@ -83,27 +90,62 @@ void ChangeValue(RSZVariable &r)
     }
 }
 
+void runScript(string fldToChange, string instToChange, string srchValue, wstring chngValue) {
+    fieldToChange = fldToChange;
+    instanceToChange = instToChange;
+    searchValue = srchValue;
+    changeValue = chngValue;
+    if (searchValue[0] == 0x21) { //!
+        not = TRUE;
+        searchValue = SubStr(searchValue, 1, sizeof(searchValue)-1);
+    }
+    if (changeValue[0] == 42)
+        multiply = TRUE;
+    else if (changeValue[0] == 47)
+        divide = TRUE;
+    else if (changeValue[0] == 126)
+        add = TRUE;
+    else if (changeValue[0] == 0x7E) //~
+        random = TRUE;
+    if (multiply || add || divide || random)  {
+        changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
+    }
+
+    for (lv=0; lv<level; lv++) {
+        r = 0;
+        while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
+            v = 0; 
+            while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
+                if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
+                && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
+                && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange && (instanceToChange == ""  
+                || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
+                || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
+                    a = 0;
+                    if (!exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].Count)) {
+                        ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v]);
+                    } else while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a])) {
+                        ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a]);
+                        a++;
+                    }
+                }
+                v++; 
+            }
+            r++;
+        }
+        if (GetSelSize() && startof(RSZFile[lv]) > GetSelStart())
+            break;
+    }
+}
 
 //start
-for (lv=0; lv<level; lv++) {
-    r = 0;
-    while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
-        v = 0; 
-        while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
-            if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
-            && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange && (instanceToChange == "" || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)) ) {
-                a = 0;
-                if (!exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].Count)) {
-                    ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v]);
-                } else while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a])) {
-                    ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a]);
-                    a++;
-                }
-            }
-            v++; 
-        }
-        r++;
-    }
-    if (GetSelSize() && startof(RSZFile[lv]) > GetSelStart())
-        break;
+if (inputValue) {
+    runScript(fieldToChange, instanceToChange, searchValue, changeValue);
+} else {
+    //runScript("_Extent", "", "![1, 1, 1]", "*10 10 10 0");
+    runScript("OverwriteActiveDistance", "", "", "1");
+    runScript("ActiveDistanceRange", "", "", "*100 100");
+    //runScript("AreaRestrictEnable", "", "", "0");
+    //runScript("ForceFindingPlayer", "", "", "0");
+    //runScript("ForceFindingPlayerKeep", "", "", "0");
 }
