@@ -2395,13 +2395,14 @@ typedef uint64 InsertKey <read=ReadInsertHashKey, write=InsertHashKey>;
             isObject = TRUE;
             newValue = Atoi(SubStr(s, 1, sizeof(s)-1));
         }
-        local int freeSpace = (startof(RSZFile[lvl].InstanceInfos) + sizeof(RSZFile[lvl].InstanceInfos)) % 16;
+        Printf("%i\n", (startof(RSZFile[lvl].InstanceInfos) + sizeof(RSZFile[lvl].InstanceInfos)));
+        local int freeSpace = 16 - ((startof(RSZFile[lvl].InstanceInfos) + sizeof(RSZFile[lvl].InstanceInfos)) % 16);
         local int sizeToInsert = 8 - freeSpace;
         if (isObject)
             sizeToInsert = 12 - freeSpace;
         local int newPadding = (16 - sizeToInsert) % 16;
         local int diff = sizeToInsert + newPadding;
-        Printf("%iL %u %u %u %u %u\n", newValue, freeSpace, sizeToInsert, newPadding, diff, parentof(k).index);
+        Printf("%iL %i %i %i %i %i\n", newValue, freeSpace, sizeToInsert, newPadding, diff, parentof(k).index);
         RSZFile[lvl].RSZHeader.dataOffset += diff;
         RSZFile[lvl].RSZHeader.userdataOffset += diff;
         if (isObject) {
