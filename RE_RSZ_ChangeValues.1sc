@@ -65,7 +65,6 @@ void ChangeValue(RSZVariable &r)
 {
     local string oldValue, newValue;
     if (exists(r.ObjectIndex)) {
-        Printf("Changing %s value at %u to %s \n", fieldToChange, startof(r.Alignment.varStart), changeValue);
         r.ObjectIndex = Atoi(changeValue);
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
         oldValue = ReadRSZVariable(r);
@@ -84,8 +83,9 @@ void ChangeValue(RSZVariable &r)
         } else {
             newValue = changeValue;
         }
+        Printf("1 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         newValue = MakeMultiValue(r, oldValue, newValue);
-        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
     }
 }
@@ -136,6 +136,10 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
         if (GetSelSize() && startof(RSZFile[lv]) > GetSelStart())
             break;
     }
+    multiply = FALSE;
+    divide = FALSE;
+    add = FALSE;
+    random = FALSE;
 }
 
 //start
@@ -143,9 +147,11 @@ if (inputValue) {
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else {
     //runScript("_Extent", "", "![1, 1, 1]", "*10 10 10 0");
-    runScript("OverwriteActiveDistance", "", "", "1");
-    runScript("ActiveDistanceRange", "", "", "*100 100");
+    //runScript("OverwriteActiveDistance", "", "", "1");
+    //runScript("ActiveDistanceRange", "", "", "*100 100");
     //runScript("AreaRestrictEnable", "", "", "0");
     //runScript("ForceFindingPlayer", "", "", "0");
     //runScript("ForceFindingPlayerKeep", "", "", "0");
 }
+
+//via render mesh v11 = mirror animations
