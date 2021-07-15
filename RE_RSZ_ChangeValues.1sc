@@ -6,7 +6,7 @@
 //   Version: 0.3
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: June 26 2021
+//   History: July 15 2021
 //------------------------------------------------
 local int lv, r, v, a, g;
 local int multiply, divide, add, random, not;
@@ -146,6 +146,19 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
 if (inputValue) {
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else {
+    //examples of finding + changing multiple values at once (use this script as a hotkey for best results):
+    runScript("IsParentPermitData", "", "", "0");
+    runScript("IsIgnorePermit", "", "", "0");    
+    runScript("PermitNum", "", "", "10");
+    runScript("PlPermitNum", "", "", "10");
+    runScript("WaitTimeMax", "", "", "0.1");
+    runScript("IsNoDie", "", "", "1");
+    runScript("Odds", "", "", "*10");
+    
+
+    //runScript("isEnable", "app.WeaponSpecialSetting", "", "1");
+    //runScript("KeepHammer", "app.WeaponSpecialSetting", "", "1");
+    //runScript("IgnoreEmpty", "app.WeaponSpecialSetting", "", "1");
     //runScript("_Extent", "", "![1, 1, 1]", "*10 10 10 0");
     //runScript("OverwriteActiveDistance", "", "", "1");
     //runScript("ActiveDistanceRange", "", "", "*100 100");
