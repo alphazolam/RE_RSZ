@@ -2807,7 +2807,7 @@ typedef struct {
             finished = TRUE;
                 
             if (Nesting && Header.magic != 1280262994) { //no RCOL
-                if (startof(RSZFile[lvl]) == Header.dataOffset) {
+                if (exists(Header.dataOffset) && startof(RSZFile[lvl]) == Header.dataOffset) {
                     if (exists(Header.folderCount))
                         for (n=0; n<Header.folderCount; n++) {
                             if (FolderInfos.FolderInfo[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[FolderInfos.FolderInfo[n].id.id]])) { 
