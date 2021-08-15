@@ -2807,7 +2807,7 @@ typedef struct {
             finished = TRUE;
                 
             if (Nesting && Header.magic != 1280262994) { //no RCOL
-                if (exists(GameObjectInfos) && startof(RSZFile[lvl]) == Header.dataOffset) {
+                if (startof(RSZFile[lvl]) == Header.dataOffset) {
                     if (exists(Header.folderCount))
                         for (n=0; n<Header.folderCount; n++) {
                             if (FolderInfos.FolderInfo[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[FolderInfos.FolderInfo[n].id.id]])) { 
@@ -2815,12 +2815,13 @@ typedef struct {
                                 struct GameObject MainFolder(1)  <name=ReadGameObjectName, read=ReadGameObject>;
                             }
                         }
-                    for (n=0; n<Header.infoCount; n++) {
-                        if (GameObjectInfos[n].parentId.id > -1 && GameObjectInfos[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]])) { 
-                            FSeek(startof(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]]));
-                            struct GameObject MainObject(0)  <name=ReadGameObjectName, read=ReadGameObject>;
-                        } 
-                    }
+                    if (exists(Header.infoCount))
+                        for (n=0; n<Header.infoCount; n++) {
+                            if (GameObjectInfos[n].id.id > -1 && GameObjectInfos[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]])) { 
+                                FSeek(startof(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]]));
+                                struct GameObject MainObject(0)  <name=ReadGameObjectName, read=ReadGameObject>;
+                            } 
+                        }
                 } else {
                     for (i=0; i<RSZHeader.instanceCount; i++) {
                         isObject = FALSE;
