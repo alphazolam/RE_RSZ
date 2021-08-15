@@ -3,14 +3,15 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.3
+//   Version: 0.31
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: July 15 2021
+//   History: August 14 2021
 //------------------------------------------------
-local int lv, r, v, a, g;
+local int lv, r, v, a, g, t;
 local int multiply, divide, add, random, not;
-local int inputValue = FALSE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+string objectNameToFind = "";
 
 if (inputValue) {
     string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
@@ -18,8 +19,11 @@ if (inputValue) {
         return;
     if (GetSelSize() && GetSelSize() > 64)
         Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
-    string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field", ""));
-    
+    string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field.\n\nStart with a `*` to specify by Object name", ""));
+    if (instanceToChange[0] == 42) {
+        instanceToChange = SubStr(instanceToChange, 1, sizeof(instanceToChange)-1);
+        objectNameToFind = InputString("Input object name", "Input the Name of the Object that contains your instance", "");
+    }
     string msg; SPrintf(msg, "Or leave blank to change all %s values", fieldToChange);
     string searchValue = InputString("Input old value to find", msg, "");
     
@@ -83,11 +87,40 @@ void ChangeValue(RSZVariable &r)
         } else {
             newValue = changeValue;
         }
-        Printf("1 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         newValue = MakeMultiValue(r, oldValue, newValue);
         //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
     }
+}
+
+int testObjectName (RSZInstance &r, RSZVariable &v, string nameToTest) {
+    if (nameToTest == v.fieldName  && exists(v.ObjectIndex)) {
+        return (startof(RSZFile[lv].Data.RawData.RSZ[v.ObjectIndex]) == startof(r));
+    } else return false;
+}
+
+int isParentObjectNamed(RSZInstance &r, string nameToTest) {
+    local int a, b, c, d;
+    while (exists(RSZFile[lv].Data.RawData.RSZ[a])) {
+        b=0;
+        while (exists(RSZFile[lv].Data.RawData.RSZ[a].var[b])) {
+            if (RSZFile[lv].Data.RawData.RSZ[a].var[b].isList == 1) {
+                c=0;
+                while (exists(RSZFile[lv].Data.RawData.RSZ[a].var[b].var[c])) {
+                    if (testObjectName(r, RSZFile[lv].Data.RawData.RSZ[a].var[b].var[c], nameToTest))
+                        return true;
+                    c++;
+                }
+            } else {
+                if (testObjectName(r, RSZFile[lv].Data.RawData.RSZ[a].var[b], nameToTest) == true)
+                    return true;
+            }
+            b++;
+        }
+        a++;
+    }
+    return false;
 }
 
 void runScript(string fldToChange, string instToChange, string srchValue, wstring chngValue) {
@@ -110,7 +143,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     if (multiply || add || divide || random)  {
         changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
     }
-
+asdsadasd
     for (lv=0; lv<level; lv++) {
         r = 0;
         while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
@@ -121,6 +154,11 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
                 && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange && (instanceToChange == ""  
                 || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
                 || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
+                    if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
+                    && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
+                        v++;
+                        continue;  
+                    }
                     a = 0;
                     if (!exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].Count)) {
                         ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v]);
@@ -146,20 +184,21 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
 if (inputValue) {
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else {
-    //examples of finding + changing multiple values at once (use this script as a hotkey for best results):
 
+    /*
+    runScript("Influence", "", "", "0");
+    objectNameToFind = "ControlPlayerInfo";
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "", "4");
+    objectNameToFind = "";
     
-    runScript("v2", "via.GameObject", "", "False");
-    runScript("v3", "via.GameObject", "", "False");
-    
-    //runScript("IsParentPermitData", "", "", "0");
-    //runScript("IsIgnorePermit", "", "", "0");    
-    //runScript("PermitNum", "", "", "10");
-    //runScript("PlPermitNum", "", "", "10");
-    //runScript("WaitTimeMax", "", "", "0.1");
-    //runScript("IsNoDie", "", "", "1");
-    //runScript("Odds", "", "", "*10");
-    
+    runScript("IsParentPermitData", "", "", "0");
+    runScript("IsIgnorePermit", "", "", "0");    
+    runScript("PermitNum", "", "", "10");
+    runScript("PlPermitNum", "", "", "10");
+    runScript("WaitTimeMax", "", "", "0.1");
+    runScript("IsNoDie", "", "", "1");
+    runScript("Odds", "", "", "*10");
+    */
 
     //runScript("isEnable", "app.WeaponSpecialSetting", "", "1");
     //runScript("KeepHammer", "app.WeaponSpecialSetting", "", "1");
