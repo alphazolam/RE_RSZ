@@ -10,7 +10,7 @@
 //------------------------------------------------
 local int lv, r, v, a, g, t;
 local int multiply, divide, add, random, not;
-local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = FALSE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 string objectNameToFind = "";
 
 if (inputValue) {
@@ -143,7 +143,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     if (multiply || add || divide || random)  {
         changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
     }
-asdsadasd
+    
     for (lv=0; lv<level; lv++) {
         r = 0;
         while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
@@ -184,7 +184,10 @@ asdsadasd
 if (inputValue) {
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else {
-
+    runScript("Influence", "", "", "0");
+    objectNameToFind = "ControlPlayerInfo";
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "", "4");
+    objectNameToFind = "";
     /*
     runScript("Influence", "", "", "0");
     objectNameToFind = "ControlPlayerInfo";

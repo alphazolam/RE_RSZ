@@ -853,6 +853,10 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
 				if (FTell()+8 <= FileSize())
 				    double data;
 				break;
+            case PlaneXZ_tid:
+				if (FTell()+8 <= FileSize())
+				    float data <name="float x">, data <name="float z">;
+				break;
 			case Float2_tid:
 			case Point_tid:
             case Segment_tid:
@@ -1112,7 +1116,7 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                 } else FSeek(startof(this));
 				break;
 			default:
-				Printf("%u Unknown type in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", FTell(), GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
+				Printf("%u Unknown type %s in class \"%s\" (Hash: 0x%08X) field number %d returned TypeID = \"%d\" ListFlag = \"%d\"\r\n", FTell(), EnumToString(fieldType), GetRSZClassName(classHash), classHash, fieldIndex, fieldType, isList);
                 if (elementSize % 4 == 0)
                     float data[elementSize/4];
                 else
@@ -2235,7 +2239,7 @@ struct {
             } TreeNodeDataStart;
             if (ReadBHVTHeader)
                 struct BHVTNODES {
-                    for (o=0; o<TreeNodeDataStart.itemCount; o++) {
+                    for (o=0; o<TreeNodeDataStart.NodeCount; o++) {
                         if (FTell()+4 <= FileSize()) {
                             struct BHVTNode {                                
                                 int ID : 16;
