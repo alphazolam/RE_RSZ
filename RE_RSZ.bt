@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.5
+//   Version: 0.49
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: August 14, 2021
+//   History: August 7, 2021
 //------------------------------------------------
 //              Option:                                                           //Effect:
 local string    RSZVersion      <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5
@@ -424,10 +424,10 @@ typedef struct {
                     if (exists(parentof(g).lvl)) 
                         lvl = parentof(g).lvl;
                     else lvl = getLevel(startof(g));
-                    if (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[GameObjectInfos[o].id]].Name.data))
-                        SPrintf(Guid, "%s[%u] -- %s", RSZFile[lvl].RawData.RSZ[ObjectTable[GameObjectInfos[o].id]].Name.data, RSZFile[lvl].ObjectTable[GameObjectInfos[o].id], Guid);
+                    if (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[GameObjectInfos[o].id.id]].Name.data))
+                        SPrintf(Guid, "%s[%u] -- %s", RSZFile[lvl].RawData.RSZ[ObjectTable[GameObjectInfos[o].id.id]].Name.data, RSZFile[lvl].ObjectTable[GameObjectInfos[o].id.id], Guid);
                     else if (exists(RSZFile[lvl]))
-                        SPrintf(Guid, "%s[%u] -- %s", RSZFile[lvl].InstanceInfos.instanceInfo[ RSZFile[lvl].ObjectTable[GameObjectInfos[o].id] ].typeId.HashName, RSZFile[lvl].ObjectTable[GameObjectInfos[o].id], Guid);
+                        SPrintf(Guid, "%s[%u] -- %s", RSZFile[lvl].InstanceInfos.instanceInfo[ RSZFile[lvl].ObjectTable[GameObjectInfos[o].id.id] ].typeId.HashName, RSZFile[lvl].ObjectTable[GameObjectInfos[o].id.id], Guid);
                     break;
                 }
         return Guid;
@@ -2383,8 +2383,8 @@ if (Header.magic != 1280262994) { //no RCOL
     if (exists(Header.infoCount) && Header.infoCount) {
         if (Header.magic == 4343376)
 	        struct GameObjectInfoPFB {
-		        int id;
-		        int parentId;
+		        ObjectId id(0);
+		        ObjectId parentId(0);
 		        int componentCount;
 	        } GameObjectInfos[Header.infoCount] <optimize=true, name=ReadGRefInfoPFBName, read=ReadGRefInfoPFB>;
         else 
@@ -2447,11 +2447,11 @@ if (Header.magic != 1280262994) { //no RCOL
 
     wstring ReadGRefInfo(GameObjectInfo &g) { return ReadObjectIdTitle(g.id); }
 
-    wstring ReadGRefInfoPFB(GameObjectInfo &g) { return ReadObjectIdTitle(g.id); }
+    wstring ReadGRefInfoPFB(GameObjectInfoPFB &g) { return ReadObjectIdTitle(g.id); }
 
     wstring ReadGRefInfoName(GameObjectInfo &g) { return ReadObjectIdName(g.id); }
 
-    wstring ReadGRefInfoPFBName(GameObjectInfo &g) { return ReadObjectIdName(g.id); }
+    wstring ReadGRefInfoPFBName(GameObjectInfoPFB &g) { return ReadObjectIdName(g.id); }
 
     wstring ReadFOLDERINFO(FOLDERINFO &f) { return ReadObjectIdTitle(f.id); }
 
@@ -2549,9 +2549,9 @@ typedef struct OBJECT (ubyte isFolder)
         if (fChildCount) {
             struct {
                 for (j=0; j<Header.folderCount; j++) {
-                    if (FolderInfos.FolderInfo[j].parentId == id) {
+                    if (FolderInfos.FolderInfo[j].parentId.id == id) {
                         tempN = n; tempJ = j;
-                        FSeek(startof(RawData.RSZ[ObjectTable[FolderInfos.FolderInfo[j].id]]));
+                        FSeek(startof(RawData.RSZ[ObjectTable[FolderInfos.FolderInfo[j].id.id]]));
                         n = j;
                         if (fChildCount == 1)
                             struct GameObject ChildFolder(1) <read=ReadGameObject, open=true>;
@@ -2816,7 +2816,7 @@ typedef struct {
                             }
                         }
                     for (n=0; n<Header.infoCount; n++) {
-                        if (GameObjectInfos[n].id.id > -1 && GameObjectInfos[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]])) { 
+                        if (GameObjectInfos[n].parentId.id > -1 && GameObjectInfos[n].parentId.id == -1 && exists(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]])) { 
                             FSeek(startof(RawData.RSZ[ObjectTable[GameObjectInfos[n].id.id]]));
                             struct GameObject MainObject(0)  <name=ReadGameObjectName, read=ReadGameObject>;
                         } 
