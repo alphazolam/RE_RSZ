@@ -8,9 +8,15 @@
 //  Category: RE Engine
 //   History: August 14 2021
 //------------------------------------------------
+
+
+//Options:
+local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+
+
+
 local int lv, r, v, a, g, t;
 local int multiply, divide, add, random, not;
-local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 string objectNameToFind = "";
 
 if (inputValue) {
@@ -50,12 +56,13 @@ string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
             SScanf( newStr, "%g %g %g %g %g %g %g %g", values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7] );
         for (g=0; g<valueSz; g++) {
             if (exists(r.data[g]))
-                if (multiply) 
+                if (multiply) {
                     values[g] = r.data[g] * values[g];
-                else if (divide && value != 0)
+                } else if (divide && values[g] != 0) {
                     values[g] = r.data[g] / values[g];
-                else if (add && value != 0)
+                } else if (add) {
                     values[g] = r.data[g] + values[g];
+                }
         }
         if (valueSz == 4)
             SPrintf(result, "%g %g %g %g", values[0], values[1], values[2], values[3]);
@@ -78,7 +85,7 @@ void ChangeValue(RSZVariable &r)
             SPrintf(newValue, "%g", Atof(oldValue) * Atof(changeValue));
         } else if (divide) {
             if (Atof(oldValue) == 0) 
-                { v++; continue; }
+                { v++; return; }
             SPrintf(newValue, "%g", Atof(oldValue) / Atof(changeValue));
         } else if (add) {
             SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
@@ -87,8 +94,10 @@ void ChangeValue(RSZVariable &r)
         } else {
             newValue = changeValue;
         }
-        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        
         newValue = MakeMultiValue(r, oldValue, newValue);
+        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        
         //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
     }
@@ -183,12 +192,57 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
 //start
 if (inputValue) {
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
-} else {
-    runScript("Influence", "", "", "0");
-    objectNameToFind = "ControlPlayerInfo";
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "", "4");
-    objectNameToFind = "";
+} else { 
+    //Set up automatic scripting here:
+    //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
+    //Various examples below. 
+
+
+
+    
+    //runScript("v2", "via.GameObject", "", "0");
+    //runScript("v3", "via.GameObject", "", "0");
+    //objectNameToFind = "DistanceUnder";
+    //runScript("param", "app.enemy.ThinkParamFloat", "", "*2");
+    
+    //runScript("RandomScaleRateRange", "", "", "*1 1.4");
+    //runScript("LocalPosition", "via.Transform", "", "*1 1.25 1.15 1"); //LocalRotation
+
     /*
+    //DMC5 enhanced model viewer:
+    runScript("CameraFaceLimitUpper", "", "", "100");
+    runScript("CameraFaceLimitLower", "", "", "100");
+    runScript("ZoomOffsetLimit", "", "", "100");
+    runScript("MoveOffsetLimit", "", "", "100");
+    runScript("CameraMoveSpeedRate", "", "", "0.005000");
+    runScript("ZoomOutOffsetLimit", "", "", "100");
+    runScript("CameraRotateSpeedRate", "", "", "0.0210000");
+    runScript("CameraZoomSpeedRate", "", "", "0.015500");
+    runScript("CameraClockwiseMaxDeg", "", "", "-1");
+    runScript("CameraCounterClockwiseMaxDeg", "", "", "-1");
+    runScript("DefaultFadeTimer", "", "", "0.1");
+    runScript("FadeInOutTimer", "", "", "0.1");
+    runScript("StartPosition", "", "", "0.25");
+    */
+    
+    //*/
+    //void runScript(fldToChange, instToChange, srchValue, chngValue)
+    
+    //runScript("CameraClockwiseMaxDeg", "", "", "100");
+    //runScript("CameraCounterClockwiseMaxDeg", "", "", "100");
+    /*
+    objectNameToFind = "ControlPlayerInfo";
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "1", "3");
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "0", "1");
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "0");
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "2", "3");
+    //runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "4", "3");
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "1", "2");
+    //runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "0");
+    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "4");
+    
+    objectNameToFind = "";
+    
     runScript("Influence", "", "", "0");
     objectNameToFind = "ControlPlayerInfo";
     runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "", "4");
