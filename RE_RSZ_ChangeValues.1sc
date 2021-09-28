@@ -3,10 +3,10 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.31
+//   Version: 0.32
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: August 14 2021
+//   History: September 27 2021
 //------------------------------------------------
 
 
@@ -197,75 +197,17 @@ if (inputValue) {
     //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
     //Various examples below. 
 
-
-
-    
-    //runScript("v2", "via.GameObject", "", "0");
-    //runScript("v3", "via.GameObject", "", "0");
-    //objectNameToFind = "DistanceUnder";
-    //runScript("param", "app.enemy.ThinkParamFloat", "", "*2");
-    
-    //runScript("RandomScaleRateRange", "", "", "*1 1.4");
-    //runScript("LocalPosition", "via.Transform", "", "*1 1.25 1.15 1"); //LocalRotation
-
     /*
-    //DMC5 enhanced model viewer:
-    runScript("CameraFaceLimitUpper", "", "", "100");
-    runScript("CameraFaceLimitLower", "", "", "100");
-    runScript("ZoomOffsetLimit", "", "", "100");
-    runScript("MoveOffsetLimit", "", "", "100");
-    runScript("CameraMoveSpeedRate", "", "", "0.005000");
-    runScript("ZoomOutOffsetLimit", "", "", "100");
-    runScript("CameraRotateSpeedRate", "", "", "0.0210000");
-    runScript("CameraZoomSpeedRate", "", "", "0.015500");
-    runScript("CameraClockwiseMaxDeg", "", "", "-1");
-    runScript("CameraCounterClockwiseMaxDeg", "", "", "-1");
-    runScript("DefaultFadeTimer", "", "", "0.1");
-    runScript("FadeInOutTimer", "", "", "0.1");
-    runScript("StartPosition", "", "", "0.25");
-    */
-    
-    //*/
-    //void runScript(fldToChange, instToChange, srchValue, chngValue)
-    
-    //runScript("CameraClockwiseMaxDeg", "", "", "100");
-    //runScript("CameraCounterClockwiseMaxDeg", "", "", "100");
-    /*
-    objectNameToFind = "ControlPlayerInfo";
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "1", "3");
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "0", "1");
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "0");
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "2", "3");
-    //runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "4", "3");
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "1", "2");
-    //runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "0");
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "3", "4");
-    
-    objectNameToFind = "";
-    
-    runScript("Influence", "", "", "0");
-    objectNameToFind = "ControlPlayerInfo";
-    runScript("TargetPlayerID", "app.MissionSettingData.PlayerInfo", "", "4");
-    objectNameToFind = "";
-    
-    runScript("IsParentPermitData", "", "", "0");
-    runScript("IsIgnorePermit", "", "", "0");    
-    runScript("PermitNum", "", "", "10");
-    runScript("PlPermitNum", "", "", "10");
-    runScript("WaitTimeMax", "", "", "0.1");
-    runScript("IsNoDie", "", "", "1");
-    runScript("Odds", "", "", "*10");
-    */
-
-    //runScript("isEnable", "app.WeaponSpecialSetting", "", "1");
-    //runScript("KeepHammer", "app.WeaponSpecialSetting", "", "1");
-    //runScript("IgnoreEmpty", "app.WeaponSpecialSetting", "", "1");
-    //runScript("_Extent", "", "![1, 1, 1]", "*10 10 10 0");
-    //runScript("OverwriteActiveDistance", "", "", "1");
-    //runScript("ActiveDistanceRange", "", "", "*100 100");
-    //runScript("AreaRestrictEnable", "", "", "0");
-    //runScript("ForceFindingPlayer", "", "", "0");
-    //runScript("ForceFindingPlayerKeep", "", "", "0");
+    runScript("v0", "offline.gimmick.action.GimmickSoloNullControl", "", "0");
+    runScript("v0", "offline.escape.enemy.em9000.EsNemesisControlZoneGroup", "", "0");
+    runScript("v0", "offline.escape.enemy.EsEnemyMovePositionUserCurve", "", "0");
+    runScript("v0", "via.physics.Colliders", "", "0");
+    runScript("v0", "via.physics.Collider", "", "0");
+    runScript("ForceAlwaysActive", "", "", "1");
+    runScript("ForceBootEventPlaying", "", "", "1");
+    runScript("IgnoreAreaLimitter", "", "", "1");
+    runScript("DrawSelf", "via.GameObject", "", "0");
+    runScript("UpdateSelf", "via.GameObject", "", "0");*/
 }
 
 //via render mesh v11 = mirror animations
