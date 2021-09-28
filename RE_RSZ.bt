@@ -285,7 +285,7 @@ uint detectedBools(uint tell) {
 }
 
 void FileOpener(wstring path) { 
-    if (FileExists(NoesisPath) && find(path, ".mesh.") != -1 || find(path, ".tex.") != -1)
+    if (FileExists(NoesisPath) && (find(path, ".mesh.") != -1 || find(path, ".tex.") != -1))
         Exec(NoesisPath, path, 0);
     local wstring tmpNm = GetTemplateFileNameW();
 	FileOpen(path, TRUE, "hex", 1); 
@@ -766,7 +766,7 @@ void redetectObject() {
         local int pos = FTell();
         while(FTell() <= FileSize() - 4) {
             if (detectedObject(FTell())) {
-                SetForeColor(cYellow);
+                SetForeColor(cAqua);
                 Printf("Redetected object from %u to %u\n",  pos, FTell()); 
                 break;
             } else FSkip(4);
@@ -789,7 +789,7 @@ void redetectFloat() {
         
         if (FTell() != pos && FTell() < pos + 16) {
             broken = FALSE;
-            SetForeColor(cYellow);
+            SetForeColor(cAqua);
             Printf("Redetected float from %u to %u\n",  pos, FTell()); 
         } else FSeek(pos);
     }
@@ -808,7 +808,7 @@ void redetectGuid() {
             if (detectedGuid(FTell()) == 16 || (detectedGuid(FTell()) < 4 && (detectedGuid(FTell()) <= detectedGuid(FTell() + 8)))) {
                 if (pos != FTell()) {
                     broken = FALSE;
-                    SetForeColor(cYellow);
+                    SetForeColor(cAqua);
                     Printf("Redetected GUID from %u to %u\n",  pos, FTell()); 
                 }
                 break;
@@ -839,7 +839,7 @@ void redetectStringBehind() {
             FSeek(pos);
             setAsBroken();
         } else if (FTell() < pos) {
-            SetForeColor(cYellow);
+            SetForeColor(cAqua);
             broken = FALSE;
             Printf("Redetected string from %u back to %u\n",  pos, FTell()); 
         }
@@ -862,7 +862,7 @@ void redetectString() {
         } else if (FTell() - pos > 8 && !broken) {
             FSeek(pos); //abort
         } else {
-            SetForeColor(cYellow);
+            SetForeColor(cAqua);
             broken = FALSE;
             Printf("Redetected string from %u to %u\n",  pos, FTell()); 
         }
@@ -948,7 +948,10 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     alignedOffs = getAlignedOffset(FTell(), align);
                     if (alignedOffs+elementSize <= FileSize()) { // && (fieldType != Object_tid || (ReadInt(FTell()) < idx && ReadInt(FTell()) > 0 )
                         FSeek(getAlignedOffset(FTell(), align));
+                        //if (!broken)
+                        //    SetForeColor(cGreen);
 			            struct RSZVariable var(classHash, fieldIndex);
+                        //SetForeColor(cNone);
                     } else {
                         setAsBroken();
                         break;    
@@ -1716,11 +1719,14 @@ typedef struct {
                 FSeek(getAlignedOffset(FTell(), 4));
             else
                 FSeek(getAlignedOffset(FTell(), GetFieldAlignment(hash, z)));
+            !broken ? SetForeColor(cGreen) : SetForeColor(cYellow);
             if (FTell() + 4 <= FileSize() && ReadUInt(FTell()) != 0 && FieldType == Object_tid || FieldType == UserData_tid || FieldType == ukn_type 
-            || (FieldType == Data_tid && GetFieldSize(hash, z) == 4 && detectedObject(FTell() + (IsList * 4))))
+            || (FieldType == Data_tid && GetFieldSize(hash, z) == 4 && detectedObject(FTell() + (IsList * 4)))) {
                 struct RSZVariable var(hash, z);
-            else
-                struct RSZVariable var(hash, z) <open=suppress>;
+            } else {
+                struct RSZVariable var(hash, z);
+            }
+            SetForeColor(cNone);
         }
     } 
     if (FEof())
@@ -2882,8 +2888,9 @@ typedef struct OBJECT (ubyte isFolder)
             FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[id] + counter]));
             i = RSZFile[lvl].ObjectTable[id] + counter;
             tempN = n;
-            if (isObject)
-                RSZInstance RSZ;// <size=SizeRSZInstance>; //cant use Size= if using `i` to index
+            if (isObject) {
+                RSZInstance RSZ;
+            }
             n = tempN;
             counter ++;
         } else break;
@@ -3133,17 +3140,20 @@ typedef struct {
                             //    redetectStringBehind();
                             //}
                             broken = false;
-                            SetForeColor(cYellow);
+                            SetForeColor(cAqua);
                         } else if (FTell() > lastGameObject) {
                             lastGameObject = FTell();
                             FSeek(startof(Test));
                         }
                     }
                     
+                    if (GetFieldArrayState(RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.Hash, 0))
+                        FSeek(getAlignedOffset(FTell(), 4));
+                    else
+                        FSeek(getAlignedOffset(FTell(), GetFieldAlignment(RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.Hash, 0)));
+                    
                     if (!i)
                         RSZInstance RSZ <hidden=true>;
-                    else if (!broken)
-                        RSZInstance RSZ <fgcolor=cGreen>;
                     else
                         RSZInstance RSZ;
                     if (sizeof(RSZ) == 0) 
