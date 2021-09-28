@@ -1722,12 +1722,12 @@ typedef struct {
                 FSeek(getAlignedOffset(FTell(), GetFieldAlignment(hash, z)));
             !broken ? SetForeColor(cGreen) : SetForeColor(cYellow);
             if (FTell() + 4 <= FileSize() && ReadUInt(FTell()) != 0 && FieldType == Object_tid || FieldType == UserData_tid || FieldType == ukn_type 
-            || (FieldType == Data_tid && GetFieldSize(hash, z) == 4 && detectedObject(FTell() + (IsList * 4)))) {
+            || (FieldType == Data_tid && GetFieldSize(hash, z) == 4 && FTell() + 4 + (IsList * 4) <= FileSize() && detectedObject(FTell() + (IsList * 4)))) {
                 struct RSZVariable var(hash, z);
             } else {
-                struct RSZVariable var(hash, z);
+                struct RSZVariable var(hash, z) <open=suppress>;
             }
-            SetForeColor(cWhite);
+            SetForeColor(cNone);
         }
     } 
     if (FEof())
@@ -2155,7 +2155,7 @@ typedef struct {
             FSeek(start + Header.hashInfoOffset);
             uint64 HashDataOffsets[4];
             FSeek(start + HashDataOffsets[0]);
-            struct rGUID GUIDs[Header.variableCount];
+            struct rGUID GUIDs[Header.variableCount] <optimize=false>;
             FSeek(start + HashDataOffsets[1]);
             uint dataHashMap[Header.variableCount];
             FSeek(start + HashDataOffsets[2]);
@@ -2183,7 +2183,7 @@ typedef OBJECTID ObjectId <read=ReadObjectIdTitle, write=WriteObjectId>;
     wstring ReadObjectIdName(ObjectId &o) {
         local string s;
         if (o.id > -1 && exists(RSZFile[o.level].ObjectTable[o.id]) && exists(RSZFile[o.level].InstanceInfos.instanceInfo[RSZFile[o.level].ObjectTable[o.id]])) {
-            s = RSZFile[o.level].InstanceInfos.instanceInfo[RSZFile[o.level].ObjectTable[o.id]].typeId.HashName;
+            SPrintf(s, "%i -- %s", o.id, RSZFile[o.level].InstanceInfos.instanceInfo[RSZFile[o.level].ObjectTable[o.id]].typeId.HashName);
             if (s != "")
                 SPrintf(s, "%s[%i]", s, RSZFile[o.level].ObjectTable[o.id]);
         }
@@ -2209,6 +2209,15 @@ typedef OBJECTID ObjectId <read=ReadObjectIdTitle, write=WriteObjectId>;
         return "";
     }
 
+    wstring ReadInstanceID(ObjectId &in) { 
+        if (exists (RSZFile[in.level].InstanceInfos.instanceInfo[in.id].typeId.HashName)) {
+            local string s; 
+            SPrintf(s, "%i -- %s", in.id, RSZFile[in.level].InstanceInfos.instanceInfo[in.id].typeId.HashName);
+            return s; 
+        } 
+        return ""; 
+    }
+
 struct fakeGameObject {
     FSeek(getAlignedOffset(FTell(), 4));
     uint size0;
@@ -2222,341 +2231,355 @@ struct fakeGameObject {
     uint timeScale;
 };
 
-
-struct {
-    local uint magic <hidden=true> = ReadUInt(FTell());
-    if (ReadUShort(2) == 0)
-        magic = ReadUInt(FTell()+4);
-	
-    if (magic == 4343376) {//50 46 42 00 PFB 
-        uint signature;
-	    int infoCount;
-        int resourceCount;
-        int grefInfoCount;
-        
-        if (RSZVersion != "DMC5" && RSZVersion != "RE2") {
-            int userdataCount;
-            int grefInfoTbl;
-            int grefInfoTbl2;
-            FSkip(4);
-        }
-
-	    uint64 resourceInfoTbl;
-	    uint64 userdataInfoTbl;
-	    uint64 dataOffset;
-    }
-
-    if (magic == 5395285) { //USR 
-        uint signature;
-        int resourceCount;
-	    int infoCount;
-        int userdataCount;
-	    uint64 resourceInfoTbl;
-	    uint64 userdataInfoTbl;
-	    uint64 dataOffset;
-    }
-    
-    if (magic == 1280262994) {//52 43 4F 4C RCOL
-        uint signature;
-        int numGroups;
-        int numShapes;
-        int numUserData;
-        int numRequestSets;
-        uint maxRequestSetId;
-        if (RSZVersion == "RE8") {
-            int numIgnoreTags;
-            int numAutoGenerateJoints;
-        }
-        uint userDataSize;
-        uint status;
-        if (RSZVersion == "RE3") {
-            uint64 uknA; 
-            uint64 uknB; 
-        }
-        uint64 groupsPtrTbl;
-        uint64 dataOffset <name="userDataStreamPtr">;
-        uint64 requestSetTbl; 
-        if (RSZVersion == "RE8") {
-            uint64 ignoreTagTbl;
-            uint64 autoGenerateJointDescTbl;
-        }
-    }
-    if (magic == 5129043) { // 53 43 4E 00 SCN
-        uint signature;
-        int infoCount;
-        int resourceCount;
-        int folderCount;
-        if (RSZVersion == "DMC5" && RSZVersion != "RE2") {
-            int userdataCount;
-            int prefabCount;
-        } else {
-            int prefabCount;
-            int userdataCount;
-        }
-
-        uint64 folderInfoTbl;
-        uint64 resourceInfoTbl;
-        uint64 prefabInfoTbl;
-        uint64 userdataInfoTbl;
-        uint64 dataOffset;
-    }
-    
-    if (ReadUInt(0) == 1414940738 || magic == 846423661) { //BHVT or mfs2
-        if (magic == 846423661) { //mfs2
-            uint version;
+if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || ReadUInt()==5129043 || ReadUInt(4)==846423661 || ReadUInt()==1414940738 )
+    struct {
+        local uint magic <hidden=true> = ReadUInt(FTell());
+        if (ReadUShort(2) == 0)
+            magic = ReadUInt(FTell()+4);
+	    
+        if (magic == 4343376) {//50 46 42 00 PFB 
             uint signature;
-            FSkip(8);
-            uint64 treeData;
-            uint64 transitionMapTbl;
-            uint64 transitionDataTbl;
-            uint64 treeInfoPtr;
-            uint transitionMapCount;
-            uint transitionDataCount;
-            uint startTransitionDataIndex;
+	        int infoCount;
+            int resourceCount;
+            
+            if (RSZVersion != "DMC5" && RSZVersion != "RE2") {
+                int uknPFBInfoCount;
+                int userdataCount;
+                int reserved;
+                uint64 uknPFBInfoTbl;
+	            uint64 resourceInfoTbl;
+	            uint64 userdataInfoTbl;
+            } else {
+                int uknPFBInfoCount;
+	            uint64 uknPFBInfoTbl;
+	            uint64 resourceInfoTbl;
+            }
 
-            FSeek(treeInfoPtr);
-            uint treeDataSize;
 
-            FSeek(transitionMapTbl);
-            if (transitionMapCount) 
-                struct TRANSITIONMAP {
-                    uint transitionId;
-                    int dataIndex;
-                } TransitionMap[transitionMapCount];
 
-            FSeek(transitionDataTbl);
-            if (transitionDataCount) 
-                struct TRANSITIONDATA {
-                    int id;
-                    uint32 endType : 4;
-                    uint32 interpolationMode : 4;
-                    uint32 interpolationCurve : 4;
-                    uint32 prevMoveToEnd : 1;
-                    uint32 startType : 4;
-                    uint32 elapsedTimeZero : 1;
-                    uint32 contOnLayer : 1;
-                    uint32 contOnLayerInterpCurve : 4;
-                    uint32 emptyBits : 9;
-                    float exitFrame;
-                    float startFrame;
-                    float interpolationFrame;
-                    if (RSZVersion != "RE2" && RSZVersion != "DMC5" ) {
-                        float contOnLayerSpeed;
-                        float contOnLayerTimeout;
-                        uint16 contOnLayerNo;
-                        uint16 contOnLayerJointMaskId;
-                    }
-                    FSkip(4);
-                } TransitionData[transitionDataCount] <optimize=true>;
-
-            FSeek(treeData);
+	        uint64 dataOffset;
         }
-        struct {
-            uint BHVT;
-            FSkip(4);
-            uint64 mSourceTreePtr;
-            uint64 mNodes;
-            uint64 mSelectors;
-            uint64 mSelectorCallers;
-            uint64 mActions;
-            uint64 mConditions;
-            uint64 mTransitionEvents;
-            uint64 mExpressionTreeConditions;
-            uint64 mSelectorValidNodeBuffer;
-            uint64 mDelayedActions;
-            uint64 mDelayedConditions;
-            uint64 mDelayedTransitionEvents;
-            uint64 mNamePoolOffs;
-            uint64 mPathNamePoolOffs;
-            if (RSZVersion != "RE2" && RSZVersion != "DMC5")
-                uint64 mUserDataPathNamePoolOffs;
-            uint64 mUserVariableDataPtr;//uint64 mRootNodeIndexOffs;
-            uint64 mReferenceTreeCountOffs;
-            uint64 mTreeIDOffs;
-            FSeek(mTreeIDOffs+startof(this));
-            unsigned int mTreeID;
-            FSeek(mNamePoolOffs+startof(this));
-            struct BHVTStringPool{
-                if (exists(mPathNamePool))
-                    uint numPaths;
-                uint poolSize;
-                while (FTell() < startof(this)+(poolSize*2)) {
-                    struct StringRead String(FTell(), 0, true) <read=ReadBHVTStringName>;
-                    if (sizeof(String) == 0) 
-                        break;
-                }
-            } mNamePool;
-            FSeek(mPathNamePoolOffs+startof(this));
-            struct BHVTStringPool mPathNamePool;
-            if (exists(mUserDataPathNamePoolOffs)) {
-                FSeek(mUserDataPathNamePoolOffs+startof(this));
-                struct BHVTStringPool mUserDataPathNamePool;
-            }
-            if (true) {
-                FSeek(mUserVariableDataPtr+startof(this));
-                struct UVAR Uvar;
-                FSeek(mReferenceTreeCountOffs+startof(this));
     
-                unsigned int mReferenceTreeCount;
-                if (FTell()+16 <= FileSize())
-                    if (ReadUInt(FTell()+16) == 1918989941) {
-                        uint64 Uvar2Offset;
-                        FSeek(Uvar2Offset+startof(this));
-                        struct UVAR Uvar2;
-                    } else {
-                        uint64 thisOffset;
-                    }
+        if (magic == 5395285) { //USR 
+            uint signature;
+            int resourceCount;
+	        int infoCount;
+            int userdataCount;
+	        uint64 resourceInfoTbl;
+	        uint64 userdataInfoTbl;
+	        uint64 dataOffset;
+        }
+        
+        if (magic == 1280262994) {//52 43 4F 4C RCOL
+            uint signature;
+            int numGroups;
+            int numShapes;
+            int numUserData;
+            int numRequestSets;
+            uint maxRequestSetId;
+            if (RSZVersion == "RE8") {
+                int numIgnoreTags;
+                int numAutoGenerateJoints;
             }
-            FSeek(mSourceTreePtr+startof(this));
-
-            /*
-                This BHVT nodes stuff is very complicated. I'm not sure how the structs are supposed to be, it's always wrong.
-                Any help figuring out how to make the Node structs work and align with their string-offsets in each one would be greatly appreciated.
-            */
-
-            /* //old way
-            void ReadHashList(int size) {
-                local uint sz = size;
-                local uint Count = ReadUInt(FTell());
-                
-                if (Count && Count < Header.BHVT.itemCount && FTell() + Count * (sz * 4) <= FileSize()) {
-                    struct {
-                        switch (1) {
-                            case 1:
-                                struct BHVTHash Hash0[Count];
-                                break;
-                            case 2:
-                                struct BHVTHash Hash0[Count];
-                                struct BHVTHash Hash1[Count];
-                                break;
-                            default:
-                                struct BHVTHash Hash0[Count];
-                                struct BHVTHash Hash1[Count];
-                                struct BHVTHash Hash2[Count];
-                                break;
+            uint userDataSize;
+            uint status;
+            if (RSZVersion == "RE3") {
+                uint64 uknA; 
+                uint64 uknB; 
+            }
+            uint64 groupsPtrTbl;
+            uint64 dataOffset <name="userDataStreamPtr">;
+            uint64 requestSetTbl; 
+            if (RSZVersion == "RE8") {
+                uint64 ignoreTagTbl;
+                uint64 autoGenerateJointDescTbl;
+            }
+        }
+        if (magic == 5129043) { // 53 43 4E 00 SCN
+            uint signature;
+            int infoCount;
+            int resourceCount;
+            int folderCount;
+            if (RSZVersion == "DMC5" && RSZVersion != "RE2") {
+                int userdataCount;
+                int prefabCount;
+            } else {
+                int prefabCount;
+                int userdataCount;
+            }
+    
+            uint64 folderInfoTbl;
+            uint64 resourceInfoTbl;
+            uint64 prefabInfoTbl;
+            uint64 userdataInfoTbl;
+            uint64 dataOffset;
+        }
+        
+        if (ReadUInt(0) == 1414940738 || magic == 846423661) { //BHVT or mfs2
+            if (magic == 846423661) { //mfs2
+                uint version;
+                uint signature;
+                FSkip(8);
+                uint64 treeData;
+                uint64 transitionMapTbl;
+                uint64 transitionDataTbl;
+                uint64 treeInfoPtr;
+                uint transitionMapCount;
+                uint transitionDataCount;
+                uint startTransitionDataIndex;
+    
+                FSeek(treeInfoPtr);
+                uint treeDataSize;
+    
+                FSeek(transitionMapTbl);
+                if (transitionMapCount) 
+                    struct TRANSITIONMAP {
+                        uint transitionId;
+                        int dataIndex;
+                    } TransitionMap[transitionMapCount];
+    
+                FSeek(transitionDataTbl);
+                if (transitionDataCount) 
+                    struct TRANSITIONDATA {
+                        int id;
+                        uint32 endType : 4;
+                        uint32 interpolationMode : 4;
+                        uint32 interpolationCurve : 4;
+                        uint32 prevMoveToEnd : 1;
+                        uint32 startType : 4;
+                        uint32 elapsedTimeZero : 1;
+                        uint32 contOnLayer : 1;
+                        uint32 contOnLayerInterpCurve : 4;
+                        uint32 emptyBits : 9;
+                        float exitFrame;
+                        float startFrame;
+                        float interpolationFrame;
+                        if (RSZVersion != "RE2" && RSZVersion != "DMC5" ) {
+                            float contOnLayerSpeed;
+                            float contOnLayerTimeout;
+                            uint16 contOnLayerNo;
+                            uint16 contOnLayerJointMaskId;
                         }
-                    } HashesList;
-                } else
-                    struct BHVTHash Hash;    
-            }*/
-
-            /*
-            struct HashList { 
-                uint count; 
-                if (count && count < Header.BHVT.itemCount && FTell() + count * 4 <= FileSize()) {
-                    
-                }
-            }; 
-            struct DoubleHashList { 
-                uint count; 
-                if (count && count < Header.BHVT.itemCount && FTell() + count * 8 <= FileSize()) {
-                    struct BHVTHash Hash(0)[count]; 
-                    struct BHVTHash HashTwo(0)[count]; 
-                }
-            }; 
-            struct TripleHashList { 
-                local uint Count <hidden=true>; 
-                if (Count && Count < Header.BHVT.itemCount && FTell() + Count * 12 <= FileSize()) {
-                    uint count;
-                    struct BHVTHash Hashes(0)[count]; 
-                    struct BHVTHash Ints(0)[count]; 
-                    struct BHVTHash Flags(0)[count]; 
-                } else struct BHVTHash Hash(0);
-            };
-            */
-            
-            uint itemCount; //int a,b,c,d;
-
-            local int lastThirtyFive <hidden=true> = FTell();
+                        FSkip(4);
+                    } TransitionData[transitionDataCount] <optimize=true>;
+    
+                FSeek(treeData);
+            }
             struct {
-                int A, B, C;
-                int D;
-                uint E;
-                local uint z <hidden=true>;
-                struct BHVTHash NodesList(3);
-                int unknown[5];
-                int thirtyFive;
-                lastThirtyFive = FTell();
-                int NameHash, NameHash <format=hex>;
-                int ukn, ukn;
-                ushort ukn;                       
-                int ID : 16;
-                int ukn : 16;
-                struct BHVTHash ConditionID(0);
-                struct BHVTHash NodeID(0);
-                int hash3;
-                //int hash4;       
-            } RootNode <hidden=false>; 
-            
-            if (ReadBHVTHeader)
-                struct BHVTNODES {
-                    for (o=1; o<itemCount; o++) {
-                        if (FTell()+4 <= FileSize()) {
-                            SetForeColor(cAqua);
-                            struct BHVTNode {     
-                                local int index <hidden=true> = o;                            
-                                if (RSZVersion != "RE2")
-                                    if (ReadUInt(FTell()))
-                                        int ID;
-                                    else int ID;
-                                struct BHVTHash hashB(0);
-                                struct BHVTHash hashC(0);
-                                struct BHVTHash NodeID(0);
-                                //struct BHVTHash hashD(0) <name="Node ID #2">; 
-                                int StringID;
-                                struct BHVTHash hashE(0);
-                                struct BHVTHash hashF(0);
-                                if (ReadUInt(FTell()))
-                                    struct BHVTHash HashList3x_B(3) <open=true>;
-                                else struct BHVTHash HashList3x_B(3);
-                                if (true) {
-                                    struct BHVTHash hashSID1(0);//int StringID;
-                                    struct BHVTHash hashH(0);
-                                    struct BHVTHash hashI(0);
-                                    if (ReadUInt(FTell()))
-                                        struct BHVTHash Actions(3) <open=true>;
-                                    else struct BHVTHash Actions(3);
-                                    //struct BHVTHash hashJ(0);
-
-                                    if (RSZVersion == "RE3") {
-                                        struct BHVTHash A(0);
-                                        struct BHVTHash B(0);
-                                        struct BHVTHash C(2);
-                                        struct BHVTHash D(0);
-                                    }
-                                    if (ReadUInt(0) != 1414940738 && ReadUInt(FTell()) != 35) { //the template will look for "35" in the hex to re-align with each node, until this is figured out
-                                        SetForeColor(cNone);
-                                        ubyte blank <hidden=true, bgcolor=cRed>;
-                                        FSeek(lastThirtyFive);
-                                        while(FTell() < RSZOffset && ReadUShort(FTell()) != 35) 
-                                            FSkip(2);
-                                        if (FTell() >= RSZOffset)
-                                            break;
-                                    }
-                                    lastThirtyFive = FTell()+4;
-                                    int thirtyFive;
-                                    int InstanceID, InstanceID <format=hex>;
-                                    struct BHVTHash hashK(0);
-                                    short uknShort;
-                                    if (ReadUInt(FTell()))
-                                        struct BHVTHash HashList2x_B(2) <open=true>; 
-                                    else struct BHVTHash HashList2x_B(2); 
-                                }
-                                
-                                local wstring name <hidden=false> = ReadWString(startof(mNamePool)+4+(StringID[0]*2));
-                                if (detectedString(startof(mNamePool)+4+(StringID[0]*2)))
-                                    name = ReadWString(startof(mNamePool)+4+(StringID[0]*2));
-                                //else if (detectedString(startof(mNamePool)+4+(StringID[1]*2)))
-                                //    name = ReadWString(startof(mNamePool)+4+(StringID[1]*2));
-                                
-                            } Node <read=ReadBHVTNode, optimize=false>;
-                        }
+                uint BHVT;
+                FSkip(4);
+                uint64 mSourceTreePtr;
+                uint64 mNodes;
+                uint64 mSelectors;
+                uint64 mSelectorCallers;
+                uint64 mActions;
+                uint64 mConditions;
+                uint64 mTransitionEvents;
+                uint64 mExpressionTreeConditions;
+                uint64 mSelectorValidNodeBuffer;
+                uint64 mDelayedActions;
+                uint64 mDelayedConditions;
+                uint64 mDelayedTransitionEvents;
+                uint64 mNamePoolOffs;
+                uint64 mPathNamePoolOffs;
+                if (RSZVersion != "RE2" && RSZVersion != "DMC5")
+                    uint64 mUserDataPathNamePoolOffs;
+                uint64 mUserVariableDataPtr;//uint64 mRootNodeIndexOffs;
+                uint64 mReferenceTreeCountOffs;
+                uint64 mTreeIDOffs;
+                FSeek(mTreeIDOffs+startof(this));
+                unsigned int mTreeID;
+                FSeek(mNamePoolOffs+startof(this));
+                struct BHVTStringPool{
+                    if (exists(mPathNamePool))
+                        uint numPaths;
+                    uint poolSize;
+                    while (FTell() < startof(this)+(poolSize*2)) {
+                        struct StringRead String(FTell(), 0, true) <read=ReadBHVTStringName>;
+                        if (sizeof(String) == 0) 
+                            break;
                     }
-                } Nodes;// <size=SizeNodes>; 
-            FSeek(startof(mTreeIDOffs)+8);
-        } BHVT;// <size=152>;
-    }
-}Header;
+                } mNamePool;
+                FSeek(mPathNamePoolOffs+startof(this));
+                struct BHVTStringPool mPathNamePool;
+                if (exists(mUserDataPathNamePoolOffs)) {
+                    FSeek(mUserDataPathNamePoolOffs+startof(this));
+                    struct BHVTStringPool mUserDataPathNamePool;
+                }
+                if (true) {
+                    FSeek(mUserVariableDataPtr+startof(this));
+                    struct UVAR Uvar;
+                    FSeek(mReferenceTreeCountOffs+startof(this));
+        
+                    unsigned int mReferenceTreeCount;
+                    if (FTell()+16 <= FileSize())
+                        if (ReadUInt(FTell()+16) == 1918989941) {
+                            uint64 Uvar2Offset;
+                            FSeek(Uvar2Offset+startof(this));
+                            struct UVAR Uvar2;
+                        } else {
+                            uint64 thisOffset;
+                        }
+                }
+                FSeek(mSourceTreePtr+startof(this));
+    
+                /*
+                    This BHVT nodes stuff is very complicated. I'm not sure how the structs are supposed to be, it's always wrong.
+                    Any help figuring out how to make the Node structs work and align with their string-offsets in each one would be greatly appreciated.
+                */
+    
+                /* //old way
+                void ReadHashList(int size) {
+                    local uint sz = size;
+                    local uint Count = ReadUInt(FTell());
+                    
+                    if (Count && Count < Header.BHVT.itemCount && FTell() + Count * (sz * 4) <= FileSize()) {
+                        struct {
+                            switch (1) {
+                                case 1:
+                                    struct BHVTHash Hash0[Count];
+                                    break;
+                                case 2:
+                                    struct BHVTHash Hash0[Count];
+                                    struct BHVTHash Hash1[Count];
+                                    break;
+                                default:
+                                    struct BHVTHash Hash0[Count];
+                                    struct BHVTHash Hash1[Count];
+                                    struct BHVTHash Hash2[Count];
+                                    break;
+                            }
+                        } HashesList;
+                    } else
+                        struct BHVTHash Hash;    
+                }*/
+    
+                /*
+                struct HashList { 
+                    uint count; 
+                    if (count && count < Header.BHVT.itemCount && FTell() + count * 4 <= FileSize()) {
+                        
+                    }
+                }; 
+                struct DoubleHashList { 
+                    uint count; 
+                    if (count && count < Header.BHVT.itemCount && FTell() + count * 8 <= FileSize()) {
+                        struct BHVTHash Hash(0)[count]; 
+                        struct BHVTHash HashTwo(0)[count]; 
+                    }
+                }; 
+                struct TripleHashList { 
+                    local uint Count <hidden=true>; 
+                    if (Count && Count < Header.BHVT.itemCount && FTell() + Count * 12 <= FileSize()) {
+                        uint count;
+                        struct BHVTHash Hashes(0)[count]; 
+                        struct BHVTHash Ints(0)[count]; 
+                        struct BHVTHash Flags(0)[count]; 
+                    } else struct BHVTHash Hash(0);
+                };
+                */
+                
+                uint itemCount; //int a,b,c,d;
+    
+                local int lastThirtyFive <hidden=true> = FTell();
+                
+                struct {
+                    int A, B, C;
+                    int D;
+                    uint E;
+                    local uint z <hidden=true>;
+                    struct BHVTHash NodesList(3);
+                    if (true) {
+                        int unknown[5];
+                        int thirtyFive;
+                        lastThirtyFive = FTell();
+                        int NameHash, NameHash <format=hex>;
+                        int ukn, ukn;
+                        if (ReadUInt(0) != 1414940738)
+                            ushort ukn;                       
+                        int ID : 16;
+                        int ukn : 16;
+                        struct BHVTHash ConditionID(0);
+                        struct BHVTHash NodeID(0);
+                        int hash3;
+                    }
+                    //int hash4;       
+                } RootNode <hidden=false>; 
+                
+                //struct {
+                //    int unk[13]; //DMC5 BHVT files
+                //} Node[itemCount];
+    
+    
+                if (ReadBHVTHeader)
+                    struct BHVTNODES {
+                        for (o=1; o<itemCount; o++) {
+                            if (FTell()+4 <= FileSize()) {
+                                SetForeColor(cAqua);
+                                struct BHVTNode {     
+                                    local int index <hidden=true> = o;                            
+                                    if (RSZVersion != "RE2")
+                                        if (ReadUInt(FTell()))
+                                            int ID;
+                                        else int ID;
+                                    struct BHVTHash hashB(0);
+                                    struct BHVTHash hashC(0);
+                                    struct BHVTHash NodeID(0);
+                                    //struct BHVTHash hashD(0) <name="Node ID #2">; 
+                                    int StringID;
+                                    struct BHVTHash hashE(0);
+                                    struct BHVTHash hashF(0);
+                                    if (ReadUInt(FTell()))
+                                        struct BHVTHash HashList3x_B(3) <open=true>;
+                                    else struct BHVTHash HashList3x_B(3);
+                                    if (true) {
+                                        struct BHVTHash hashSID1(0);//int StringID;
+                                        struct BHVTHash hashH(0);
+                                        struct BHVTHash hashI(0);
+                                        if (ReadUInt(FTell()))
+                                            struct BHVTHash Actions(3) <open=true>;
+                                        else struct BHVTHash Actions(3);
+                                        //struct BHVTHash hashJ(0);
+    
+                                        if (RSZVersion == "RE3") {
+                                            struct BHVTHash A(0);
+                                            struct BHVTHash B(0);
+                                            struct BHVTHash C(2);
+                                            struct BHVTHash D(0);
+                                        }
+                                        if (ReadUInt(0) != 1414940738 && ReadUInt(FTell()) != 35) { //the template will look for "35" in the hex to re-align with each node, until this is figured out
+                                            SetForeColor(cNone);
+                                            ubyte blank <hidden=true, bgcolor=cRed>;
+                                            FSeek(lastThirtyFive);
+                                            while(FTell() < RSZOffset && ReadUShort(FTell()) != 35) 
+                                                FSkip(2);
+                                            if (FTell() >= RSZOffset)
+                                                break;
+                                        }
+                                        lastThirtyFive = FTell()+4;
+                                        int thirtyFive;
+                                        int InstanceID, InstanceID <format=hex>;
+                                        struct BHVTHash hashK(0);
+                                        short uknShort;
+                                        if (ReadUInt(FTell()))
+                                            struct BHVTHash HashList2x_B(2) <open=true>; 
+                                        else struct BHVTHash HashList2x_B(2); 
+                                    }
+                                    
+                                    local wstring name <hidden=false> = ReadWString(startof(mNamePool)+4+(StringID[0]*2));
+                                    if (detectedString(startof(mNamePool)+4+(StringID[0]*2)))
+                                        name = ReadWString(startof(mNamePool)+4+(StringID[0]*2));
+                                    //else if (detectedString(startof(mNamePool)+4+(StringID[1]*2)))
+                                    //    name = ReadWString(startof(mNamePool)+4+(StringID[1]*2));
+                                    
+                                } Node <read=ReadBHVTNode, optimize=false>;
+                            }
+                        }
+                    } Nodes;// <size=SizeNodes>; 
+                FSeek(startof(mTreeIDOffs)+8);
+            } BHVT;// <size=152>;
+        }
+    }Header;
 
     int SizeNodes (BHVTNODES &b) { return RSZOffset - startof(b); }
 
@@ -2728,18 +2751,18 @@ typedef struct {
 
 typedef struct {
     if (ReadInt(FTell()+4) != 0)
-        wstring path; 
+        StringRead pathStr(FTell(), 0, 1); 
     else
         StringRead pathStr(-1, 0, 0);
 } Resource_Info <name=ReadResourceInfoName, read=ReadResourceInfo, write=WriteResourceInfo>;
 
-    string ReadResourceInfo(Resource_Info &r) { if (exists(r.path)) return r.path; return r.pathStr.String; }
+    string ReadResourceInfo(Resource_Info &r) { return r.pathStr.String; }
 
-    string ReadResourceInfoName(Resource_Info &r) { if (!exists(r.pathStr.OpenFile) && !exists(r.OpenFile)) return "*ResourceInfo"; return ""; }
+    string ReadResourceInfoName(Resource_Info &r) { if (!exists(r.pathStr.OpenFile) && !exists(r.OpenFile)) return "*ResourceInfo"; return "ResourceInfo"; }
 
-    void WriteResourceInfo(Resource_Info &r, string s) { WriteStringRead(r.pathStr, s); }
+    void WriteResourceInfo(Resource_Info &r, string s) { WriteStringRead(r.pathStr, s);  }
 
-if (Header.magic != 1280262994) { //no RCOL
+if (ReadUInt(0) != 1280262994) { //no RCOL
 
     if (exists(Header.infoCount) && Header.infoCount) {
         if (Header.magic == 4343376)
@@ -2778,6 +2801,20 @@ if (Header.magic != 1280262994) { //no RCOL
         } userDataInfos;
     }
 
+
+    if (exists(Header.uknPFBInfoCount) && Header.uknPFBInfoCount > 0) {
+        FSeek(Header.uknPFBInfoTbl);
+        struct {
+	        struct {
+                ObjectId InstanceID(0) <read=ReadObjectIdName>;
+                ushort shortA;
+                ushort shortB;
+                int intA;
+                ObjectId GameObjectID(0);
+            } uknPFBInfo[Header.uknPFBInfoCount] <optimize=false>;
+        } uknPFBInfos;
+    }
+    
     if (exists(Header.resourceCount) && Header.resourceCount) {
 	    FSeek(Header.resourceInfoTbl);
 	    struct {
@@ -2885,11 +2922,10 @@ typedef struct OBJECT (ubyte isFolder)
         if ( counter == 0 || (RSZFile[lvl].InstanceInfos.instanceInfo[RSZFile[lvl].ObjectTable[id] + counter].typeId.HashName != "via.Folder")
             && (RSZFile[lvl].InstanceInfos.instanceInfo[RSZFile[lvl].ObjectTable[id] + counter].typeId.HashName != "via.GameObject") ) 
         {
-            
-            FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[id] + counter]));
             i = RSZFile[lvl].ObjectTable[id] + counter;
             tempN = n;
             if (isObject) {
+                FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[id] + counter]));
                 RSZInstance RSZ;
             }
             n = tempN;
@@ -3108,7 +3144,7 @@ typedef struct {
             struct DATA {
                 if (!IsInitialized())
                     ParseJson(JsonPath);
-                
+                local int temp <hidden=true>;
                 local int rawData <hidden=true>;
                 local int lvl <hidden=true> = getLevel(FTell());
                 for (i=0; i<RSZFile[lvl].RSZHeader.instanceCount; i++) {
@@ -3147,20 +3183,21 @@ typedef struct {
                             FSeek(startof(Test));
                         }
                     }
-                    
+                    temp = FTell();
                     if (GetFieldArrayState(RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.Hash, 0))
                         FSeek(getAlignedOffset(FTell(), 4));
                     else
-                        FSeek(getAlignedOffset(FTell(), GetFieldAlignment(RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.Hash, 0)));
+                        FSeek(getAlignedOffset(FTell(), GetFieldAlignment(RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.Hash, 0))); 
                     
                     if (!i)
                         RSZInstance RSZ <hidden=true>;
                     else
                         RSZInstance RSZ;
+                    
                     if (sizeof(RSZ) == 0) 
                         Printf("Empty struct: %u\n", FTell()); 
                     if (exists(RSZ.skipFileData)) {
-                        FSeek(startof(RSZ));
+                        FSeek(temp);
                     } else if (exists(RSZ.skip)) {
                         if (i)
                             Printf("\nERROR: Missing struct for %X %s [%u]\n", RSZ.hash, RSZ.name, RSZ.idx);
@@ -3168,7 +3205,7 @@ typedef struct {
                     }
                 }
             };
-            SetForeColor(cWhite);
+            SetForeColor(cNone);
             if (HideRawData || (!ShowChildRSZs && exists(parentof(parentof(parentof(this)))))) //if is an embedded RSZMagic
                 DATA RawData <hidden=true, open=suppress>;
             else
@@ -3281,7 +3318,7 @@ typedef struct {
 //start of file =====================
 
 FSeek(RSZOffset);
-if (Header.magic == 4343376 || Header.magic == 5129043) // SCN or PFB
+if (ReadUInt(0) == 4343376 || ReadUInt(0) == 5129043) // SCN or PFB
     { FSkip(-1); BLANK __; FSkip(-1); BLANK MainDataNotice <name=ReadMainDataNotice>; }
 while (FTell()+4 <= FileSize()) {
     if ( ReadUInt(FTell()) == 5919570 ) { //RSZ
@@ -3299,7 +3336,7 @@ while (FTell()+4 <= FileSize()) {
         FSkip(1);
 }
 finished = true;
-if (sizeof(Header) == 0) { //detect strings in motbank etc files:
+if (!exists(Header)) { //detect strings in motbank etc files:
     FSeek(0);
     while(FTell() + 6 <= FileSize())
         if (detectedString(FTell()))
@@ -3310,7 +3347,7 @@ if (sizeof(Header) == 0) { //detect strings in motbank etc files:
 
 //RCOL only =========================
 
-if (Header.magic == 1280262994) { 
+if (ReadUInt(0) == 1280262994) { 
     FSeek(Header.groupsPtrTbl);
     struct {
         struct RcolGroup {
