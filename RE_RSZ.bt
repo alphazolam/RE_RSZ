@@ -285,10 +285,11 @@ uint detectedBools(uint tell) {
 }
 
 void FileOpener(wstring path) { 
-    if (FileExists(NoesisPath) && (find(path, ".mesh.") != -1 || find(path, ".tex.") != -1))
-        Exec(NoesisPath, path, 0);
     local wstring tmpNm = GetTemplateFileNameW();
-	FileOpen(path, TRUE, "hex", 1); 
+    if (FileExists(NoesisPath) && (find(path, ".mesh.") != -1 || find(path, ".tex.") != -1)) {
+        Exec(NoesisPath, "\"" + path + "\"", 0);
+	    FileOpen(path, TRUE, "hex", 0); 
+    } else FileOpen(path, TRUE, "hex", 1);
     FileSelect(FindOpenFileW(path));
 	if (GetTemplateFileNameW() == "")
 		RunTemplate(tmpNm, 0);
@@ -1726,7 +1727,7 @@ typedef struct {
             } else {
                 struct RSZVariable var(hash, z);
             }
-            SetForeColor(cNone);
+            SetForeColor(cWhite);
         }
     } 
     if (FEof())
@@ -3167,12 +3168,12 @@ typedef struct {
                     }
                 }
             };
-            
+            SetForeColor(cWhite);
             if (HideRawData || (!ShowChildRSZs && exists(parentof(parentof(parentof(this)))))) //if is an embedded RSZMagic
                 DATA RawData <hidden=true, open=suppress>;
             else
                 DATA RawData <open=suppress>;
-        
+            SetForeColor(cNone);
             finished = TRUE;
                 
             if (Nesting && Header.magic != 1280262994) { //no RCOL
@@ -3205,6 +3206,7 @@ typedef struct {
                     }
                 }
             }
+            SetForeColor(cNone);
         } Data <open=true>;
     } else 
         { FSkip(-1); ubyte Data <hidden=true>; }
