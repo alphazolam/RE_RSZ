@@ -937,7 +937,15 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                     alignedOffs = getAlignedOffset(FTell(), align);
                     if (alignedOffs+elementSize <= FileSize()) { // && (fieldType != Object_tid || (ReadInt(FTell()) < idx && ReadInt(FTell()) > 0 )
                         FSeek(getAlignedOffset(FTell(), align));
-			            struct RSZVariable var(classHash, fieldIndex);
+                        if (Count == 1 && fieldType == Object_tid || (fieldType == Data_tid && detectedObject(FTell()))) {
+			                struct RSZVariable var(classHash, fieldIndex) <open=true>;
+                            checkUseSpacers();
+                        } else
+                            struct RSZVariable var(classHash, fieldIndex);
+                        if (var.fieldDataType == "String" && !isValidString(startof(var))) {
+                            setAsBroken();
+                            break;   
+                        }
                     } else {
                         setAsBroken();
                         break;    
@@ -1029,7 +1037,7 @@ typedef struct Variable(uint32 classHash, ubyte fieldIndex) {
                         struct StringRead path ( (startof(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx])+8), startof(RSZFile[lvl].RSZHeader), 0);
                         break;
                     } 
-                } else if (fieldType == Object_tid &&  exists(ObjectIndex) &&ObjectIndex > -1 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
+                } else if (fieldType == Object_tid &&  exists(ObjectIndex) &&ObjectIndex > 0 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
 					FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])); 
                     temp = GetForeColor();
                     SetForeColor(cNone);
@@ -2942,8 +2950,20 @@ typedef struct(ubyte isFolder)
         }
     }
 
+    local uint counter <hidden=true>, componentCount <hidden=true>;
+    if (!isFolder)
+        componentCount = GameObjectInfos[n].componentCount;
+    for (counter=id; counter<id+1+componentCount; counter++) {
+        if (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[counter]])) {
+            i = RSZFile[lvl].ObjectTable[counter];
+            tempN = n;
+            FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[counter]]));
+            RSZInstance RSZ;
+            n = tempN;
+        }
+    }
+    /*
     local uint counter <hidden=true>, isObject <hidden=true>;
-
     while (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[id] + counter].name)) {
         isObject = FALSE;
         for (j=0; j<RSZHeader.objectCount; j++) 
@@ -2960,7 +2980,7 @@ typedef struct(ubyte isFolder)
             n = tempN;
             counter ++;
         } else break;
-    }  
+    }*/
     if (title == "" && exists(RSZ[0].title))
         title = RSZ[0].title; 
         
@@ -3264,9 +3284,9 @@ typedef struct {
                         if (isObject && exists(RawData.RSZ[i])) {
                             FSeek(startof(RawData.RSZ[i]));
                             if (RSZHeader.objectCount == 1) {
-                                RSZInstance RSZ <open=true>;
+                                struct RSZInstance RSZ <open=true>;
                                 checkUseSpacers();
-                            } else RSZInstance RSZ;
+                            } else struct RSZInstance RSZ;
                             if (exists(RawData.RSZ[i].skip) || exists(RawData.RSZ[i].skipFileData)) 
                                 FSeek(startof(RSZ));
                         }
