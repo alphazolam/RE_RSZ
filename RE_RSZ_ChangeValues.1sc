@@ -17,30 +17,11 @@ local int inputValue = TRUE; //set this to FALSE and you can set your own list o
 
 local int lv, r, v, a, g, t;
 local int multiply, divide, add, random, not;
-string objectNameToFind = "";
-
-if (inputValue) {
-    string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
-    if (fieldToChange == "")
-        return;
-    if (GetSelSize() && GetSelSize() > 64)
-        Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
-    string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field.\n\nStart with a `*` to specify by Object name", ""));
-    if (instanceToChange[0] == 42) {
-        instanceToChange = SubStr(instanceToChange, 1, sizeof(instanceToChange)-1);
-        objectNameToFind = InputString("Input object name", "Input the Name of the Object that contains your instance", "");
-    }
-    string msg; SPrintf(msg, "Or leave blank to change all %s values", fieldToChange);
-    string searchValue = InputString("Input old value to find", msg, "");
-    
-    wstring changeValue = InputString("Input New Value", "Example:\n5 = Change to 5\n*1 = Multiply by 1\n\\2 = Divide by 2\n+1.4 = Add 1.4\n+-3 = Subtract 3", "*1");
-    Printf("ChangeValue: %s\n", changeValue);
-} else {
-    string fieldToChange;
-    string instanceToChange;
-    string searchValue;
-    wstring changeValue;
-}
+//string objectNameToFind = "";
+string fieldToChange;
+string instanceToChange;
+string searchValue;
+wstring changeValue;
 
 string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
     string result = newStr;
@@ -191,6 +172,22 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
 
 //start
 if (inputValue) {
+    string fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
+    if (fieldToChange == "")
+        return;
+    if (GetSelSize() && GetSelSize() > 64)
+        Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
+    string instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field.\n\nStart with a `*` to specify by Object name", ""));
+    if (instanceToChange[0] == 42) {
+        instanceToChange = SubStr(instanceToChange, 1, sizeof(instanceToChange)-1);
+        objectNameToFind = InputString("Input object name", "Input the Name of the Object that contains your instance", "");
+    }
+    string msg; SPrintf(msg, "Or leave blank to change all %s values", fieldToChange);
+    string searchValue = InputString("Input old value to find", msg, "");
+    
+    wstring changeValue = InputString("Input New Value", "Example:\n5 = Change to 5\n*1 = Multiply by 1\n\\2 = Divide by 2\n+1.4 = Add 1.4\n+-3 = Subtract 3", "*1");
+    Printf("ChangeValue: %s\n", changeValue);
+    
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else { 
     //Set up automatic scripting here:
