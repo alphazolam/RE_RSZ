@@ -2513,7 +2513,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                     int selectorId;
                     if (exists(RSZ[6].Data.RawData.RSZ[selectorId])) {
                         FSeek(startof(RSZ[6].Data.RawData.RSZ[selectorId]));
-                        struct RSZInstance Selector;
+                        struct RSZInstance Selector(selectorId);
                         FSeek(startof(selectorId)+4);
                     }
                     int selectorCallersCount;
@@ -3364,7 +3364,7 @@ if (ReadUInt(0) == 1280262994) {
                     
                     local uint RSZIdx <hidden=true> = RSZFile.ObjectTable[n];
                     FSeek(startof(RSZFile.Data.RawData.RSZ[RSZIdx]));
-                    RSZInstance RSZ(RSZIdx) <open=true, size=SizeRSZInstance>;
+                    struct RSZInstance RSZ(RSZIdx) <open=true>; //, size=SizeRSZInstance
 
                     SetForeColor(cNone);
                     FSeek(startof(KeyHash)+8);
