@@ -1301,7 +1301,8 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             secondTitle = ReadrGUID(Guid);
         } else if (exists(this.RSZ) && this.ObjectIndex > 2) {
             if (!isList || parentof(this).Count == 1) {
-                secondTitle = ReadRSZInstance(this.RSZ);
+                if (ReadRSZInstance(this.RSZ) != "")
+                    secondTitle = ReadRSZInstance(this.RSZ);
                 if (Atoi(secondTitle) != 0 || secondTitle == "False" || secondTitle == "True") 
                     secondTitle = "";
             } else if (parentof(this).Count > 1 && exists(parentof(this).var[parentof(this).Count-2])) {
