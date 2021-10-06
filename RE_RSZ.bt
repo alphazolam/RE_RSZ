@@ -2215,7 +2215,7 @@ typedef struct {
                 FSeek(start + HashDataOffsets[3]);
                 uint nameHashMap[Header.variableCount];
             } HashData;
-            if (FTell()+4 <= FileSize() && !exists(parentof(this).Uvar[1]) 
+            if (FTell()+4 <= FileSize() && !exists(parentof(this).Uvar[1]) && ReadUInt()
             && ReadUInt64(FTell()+4)+start > FTell() && ReadUInt64(FTell()+4)+start < FileSize() )
                 struct {
                     uint embedCount;
@@ -2439,45 +2439,43 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                 if (transitionDataCount) 
                     struct TRANSITIONDATA {
                         int id <format=hex>;
-                        struct Node_Attribute {
-                            enum {
-                                EndType_None = 0x0,
-                                EndType_EndOfMotion = 0x1,
-                                EndType_ExitFrame = 0x2,
-                                EndType_ExitFrameFromEnd = 0x3,
-                                EndType_SyncPoint = 0x4,
-                                EndType_SyncPointFromEnd = 0x5,
-                            } endType : 4;
-                            enum {
-                                InterpolationMode_None = 0x0,
-                                InterpolationMode_FrontFade = 0x1,
-                                InterpolationMode_CrossFade = 0x2,
-                                InterpolationMode_SyncCrossFade = 0x3,
-                                InterpolationMode_SyncPointCrossFade = 0x4,
-                                InterpolationMode_FrontOffsetFade = 0x5,
-                                InterpolationMode_InertiaFade = 0x6,
-                                InterpolationMode_FrontSpeedFade = 0x7,
-                            } interpolationMode : 4;
-                            enum {
-                                InterpolationCurve_Linear = 0x0,
-                                InterpolationCurve_Smooth = 0x1,
-                                InterpolationCurve_EaseIn = 0x2,
-                                InterpolationCurve_EaseOut = 0x3,
-                            } interpolationCurve : 4;
-                            uint32 prevMoveToEnd : 1;
-                            enum {
-                                StartType_None = 0x0,
-                                StartType_Frame = 0x1,
-                                StartType_NormalizedTime = 0x2,
-                                StartType_SyncTime = 0x3,
-                                StartType_AutoSyncTime = 0x4,
-                                StartType_AutoSyncTimeSamePointCount = 0x5,
-                            } startType : 4;
-                            uint32 elapsedTimeZero : 1;
-                            uint32 contOnLayer : 1;
-                            uint32 contOnLayerInterpCurve : 4;
-                            uint32 emptyBits : 9 <hidden=true>;
-                        } Attribute <open=true>;
+                        enum {
+                            EndType_None = 0x0,
+                            EndType_EndOfMotion = 0x1,
+                            EndType_ExitFrame = 0x2,
+                            EndType_ExitFrameFromEnd = 0x3,
+                            EndType_SyncPoint = 0x4,
+                            EndType_SyncPointFromEnd = 0x5,
+                        } endType : 4;
+                        enum {
+                            InterpolationMode_None = 0x0,
+                            InterpolationMode_FrontFade = 0x1,
+                            InterpolationMode_CrossFade = 0x2,
+                            InterpolationMode_SyncCrossFade = 0x3,
+                            InterpolationMode_SyncPointCrossFade = 0x4,
+                            InterpolationMode_FrontOffsetFade = 0x5,
+                            InterpolationMode_InertiaFade = 0x6,
+                            InterpolationMode_FrontSpeedFade = 0x7,
+                        } interpolationMode : 4;
+                        enum {
+                            InterpolationCurve_Linear = 0x0,
+                            InterpolationCurve_Smooth = 0x1,
+                            InterpolationCurve_EaseIn = 0x2,
+                            InterpolationCurve_EaseOut = 0x3,
+                        } interpolationCurve : 4;
+                        uint32 prevMoveToEnd : 1;
+                        enum {
+                            StartType_None = 0x0,
+                            StartType_Frame = 0x1,
+                            StartType_NormalizedTime = 0x2,
+                            StartType_SyncTime = 0x3,
+                            StartType_AutoSyncTime = 0x4,
+                            StartType_AutoSyncTimeSamePointCount = 0x5,
+                        } startType : 4;
+                        uint32 elapsedTimeZero : 1;
+                        uint32 contOnLayer : 1;
+                        uint32 contOnLayerInterpCurve : 4;
+                        uint32 emptyBits : 9 <hidden=true>;
                         float exitFrame;
                         float startFrame;
                         float interpolationFrame;
@@ -2606,14 +2604,14 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
         struct BHVTHash ChildNodeEx(id_All); FSkip(4 * childCount.Count - 4);
         struct BHVTId Conditions(id_Conditions, 0);
         FSeek(startof(ChildNode)+4);
-    } nChild <read=ReadnChild>;
+    } nChild <name="Child", read=ReadnChild>;
 
     typedef struct {
         struct BHVTHash mActions(id_Actions) <open=true>;
         FSkip(4 * mActionsCount.Count - 4);
         struct BHVTHash mActionsEx(id_Actions);
         FSeek(startof(mActions)+4);
-    } nAction <read=ReadnAction>;
+    } nAction <name="Action", read=ReadnAction>;
     
     typedef struct {
         struct BHVTHash mStartTransitionEvent(id_All);  FSkip(4 * mTransitionCount.Count - 4);
@@ -2628,7 +2626,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
             struct BHVTHash mStartStateEx(id_All);
         }
         FSeek(startof(mStartTransitionEvent)+4);
-    } nTransition <read=ReadnTransition>;
+    } nTransition <name="Transition", read=ReadnTransition>;
     
     typedef struct {
         struct BHVTId mStates(id_All, 1); 
@@ -2642,7 +2640,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
         struct BHVTHash mTransitionAttributes(id_All);  FSkip(4 * mStatesCount.Count - 4);
         struct BHVTHash mStatesEx(id_All); 
         FSeek(startof(mStates)+sizeof(mStates));
-    } nState <read=ReadnState>;
+    } nState <name="State", read=ReadnState>;
 
     typedef struct {
         struct BHVTHash mAllState(id_All); FSkip(4 * mAllStateCount.Count - 4);
@@ -2651,7 +2649,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
         struct BHVTHash mAllStateEx(id_All); FSkip(4 * mAllStateCount.Count - 4);
         struct BHVTHash mAllTransitionAttributes(id_All);
         FSeek(startof(mAllState)+4);
-    } nAllstate <read=ReadnAllstate>;
+    } nAllstate <name="AllState", read=ReadnAllState>;
 
     if (exists(Header.BHVT) && ReadBHVTHeader) {
         
@@ -2729,7 +2727,30 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                         struct {
                             if (ReadInt() & 0x20) {
                                 local uint mNodeAttribute <hidden=true> = ReadUInt(FTell());
-                                Node_Attribute NodeAttribute <open=true>;
+                                enum <uint16> {
+                                    NodeAttribute_IsEnabled = 0x1,
+                                    NodeAttribute_IsRestartable = 0x2,
+                                    NodeAttribute_HasReferenceTree = 0x4,
+                                    NodeAttribute_BubblesChildEnd = 0x8,
+                                    NodeAttribute_SelectOnce = 0x10,
+                                    NodeAttribute_IsFSMNode = 0x20,
+                                    NodeAttribute_TraverseToLeaf = 0x40,
+                                } NodeAttribute;
+                                enum <uint16> {
+                                    WorkFlags_IsNotifiedEnd = 0x1,
+                                    WorkFlags_HasEvaluated = 0x2,
+                                    WorkFlags_HasSelected = 0x4,
+                                    WorkFlags_IsCalledActionPrestart = 0x8,
+                                    WorkFlags_IsCalledActionStart = 0x10,
+                                    WorkFlags_IsNotifiedUnderLayerEnd = 0x20,
+                                    WorkFlags_IsBranchState = 0x40,
+                                    WorkFlags_IsEndState = 0x80,
+                                    WorkFlags_IsStartedSelector = 0x100,
+                                    WorkFlags_OverridedSelector = 0x200,
+                                    WorkFlags_DuplicatedAction = 0x400,
+                                    WorkFlags_IsAsRestartable = 0x800,
+                                } WorkFlags;
+
                                 int mNameHash <format=hex>;
                                 int mFullnameHash <format=hex>;
                             } else int mNodeAttribute;
@@ -2814,7 +2835,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                                 struct BHVTCount mAllStateCount(5); 
                         }
                         
-                        int VariableReferenceNodeOffset;
+                        int mReferenceTreeIndex;
                         
                     } else {
                         uint unknownAI;
