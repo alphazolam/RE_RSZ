@@ -14,6 +14,47 @@
 local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
 
+void runScripts() 
+{
+    //Set up automatic scripting here:
+    //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
+    //Various examples below. 
+    /*runScript("Float STRUCT__Follow_DampingRate[11]", "", "", "*2");
+    runScript("Float STRUCT__Follow_DampingTime[12]", "", "", "*2");
+    runScript("Bool _EnableTightFollow[13]", "", "", "1");
+    runScript("Float STRUCT__DistanceDamping_DampingRate[17]", "", "", "*2");
+    runScript("Float STRUCT__DistanceDamping_DampingTime[18]", "", "", "*2");
+    runScript("Float STRUCT__TightFollow_DampingRate[14]", "", "", "*2");
+    runScript("Float STRUCT__TightFollow_DampingTime[15]", "", "", "*2");
+    runScript("Float _UseOutput[15]", "", "", "1");*/
+    //runScript("DampingRate", "", "", "*10");
+    //runScript("Bool IsEnableValueSetting[0]", "", "", "1");
+    //runScript("Point PitchDeg[2]", "", "", "-90 180");
+    //runScript("Point YawDeg[2]", "", "", "-90 180");
+    //runScript("Float DampingTime[4]", "", "", "*10");
+    //runScript("Source", "", "", "*2");
+    //runScript("Target", "", "", "*2");
+    //runScript("", "", "", "*0.1");
+    //runScript("Float RecommendedVerticalLimitLow[6]", "", "", "90");
+    //runScript("Float PogOffsetYHigh[14]", "", "", "90");
+    //runScript("Float PogOffsetYLow[14]", "", "", "-90");
+    //runScript("Float VerticalLimitHigh[14]", "", "", "90");
+    //runScript("Float VerticalLimitLow[14]", "", "", "90");
+    //runScript("RotationAccVertical", "", "", "5");
+    
+    /*
+    runScript("v0", "offline.gimmick.action.GimmickSoloNullControl", "", "0");
+    runScript("v0", "offline.escape.enemy.em9000.EsNemesisControlZoneGroup", "", "0");
+    runScript("v0", "offline.escape.enemy.EsEnemyMovePositionUserCurve", "", "0");
+    runScript("v0", "via.physics.Colliders", "", "0");
+    runScript("v0", "via.physics.Collider", "", "0");
+    runScript("ForceAlwaysActive", "", "", "1");
+    runScript("ForceBootEventPlaying", "", "", "1");
+    runScript("IgnoreAreaLimitter", "", "", "1");
+    runScript("DrawSelf", "via.GameObject", "", "0");
+    runScript("UpdateSelf", "via.GameObject", "", "0");*/
+}
+
 
 local int lv, r, v, a, g, t;
 local int multiply, divide, add, random, not;
@@ -57,6 +98,7 @@ void ChangeValue(RSZVariable &r)
 {
     local string oldValue, newValue;
     if (exists(r.ObjectIndex)) {
+        Printf("Changing %s value at %u from %g to %g \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, Atoi(changeValue));
         r.ObjectIndex = Atoi(changeValue);
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
         oldValue = ReadRSZVariable(r);
@@ -118,6 +160,14 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     instanceToChange = instToChange;
     searchValue = srchValue;
     changeValue = chngValue;
+    
+    if (findS(fieldToChange, " ") != -1) 
+        fieldToChange = StrDel(fieldToChange, 0, findS(fieldToChange, " ") + 1);
+    if (findS(fieldToChange, "\\[") != -1) 
+        fieldToChange = StrDel(fieldToChange, findS(fieldToChange, "\\["), sizeof(fieldToChange) - findS(fieldToChange, "\\["));
+    if (findS(instanceToChange, "\\[") != -1) 
+        instanceToChange = StrDel(instanceToChange, findS(instanceToChange, "\\["), sizeof(instanceToChange) - findS(instanceToChange, "\\["));
+
     if (searchValue[0] == 0x21) { //!
         not = TRUE;
         searchValue = SubStr(searchValue, 1, sizeof(searchValue)-1);
@@ -133,7 +183,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     if (multiply || add || divide || random)  {
         changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
     }
-    
+    instanceToChange = Lower((wstring)instanceToChange);
     for (lv=0; lv<level; lv++) {
         r = 0;
         while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
@@ -142,8 +192,8 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
                 && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange && (instanceToChange == ""  
-                || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
-                || Lower((wstring)instanceToChange) == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
+                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
+                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
                     if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
                     && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
                         v++;
@@ -161,7 +211,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
             }
             r++;
         }
-        if (GetSelSize() && startof(RSZFile[lv]) > GetSelStart())
+        if (GetSelSize() && startof(RSZFile[lv]) >= GetSelStart() && startof(RSZFile[lv])+sizeof(RSZFile[lv]) > GetSelStart()+GetSelSize())
             break;
     }
     multiply = FALSE;
@@ -170,20 +220,15 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     random = FALSE;
 }
 
+
 //start
 if (inputValue) {
     fieldToChange = InputString("Input field name to find", "Input the Name of the field you want to change", "");
     if (fieldToChange == "")
         return;
-    if (findS(fieldToChange, " ") != -1) 
-        fieldToChange = StrDel(fieldToChange, 0, findS(fieldToChange, " ") + 1);
-    if (findS(fieldToChange, "\\[") != -1) 
-        fieldToChange = StrDel(fieldToChange, findS(fieldToChange, "\\["), sizeof(fieldToChange) - findS(fieldToChange, "\\["));
     if (GetSelSize() && GetSelSize() > 64)
         Printf("Will change %s variables within range: [%u to %u]\n\n", fieldToChange, GetSelStart(), GetSelStart() + GetSelSize());
     instanceToChange = Lower(InputString("Input instance name to find", "Or leave blank to change all instances with that field.\n\nStart with a `*` to specify by Object name", ""));
-    if (findS(instanceToChange, "\\[") != -1) 
-        instanceToChange = StrDel(instanceToChange, findS(instanceToChange, "\\["), sizeof(instanceToChange) - findS(instanceToChange, "\\["));
     if (instanceToChange[0] == 42) {
         instanceToChange = SubStr(instanceToChange, 1, sizeof(instanceToChange)-1);
         objectNameToFind = InputString("Input object name", "Input the Name of the Object that contains your instance", "");
@@ -196,21 +241,7 @@ if (inputValue) {
     
     runScript(fieldToChange, instanceToChange, searchValue, changeValue);
 } else { 
-    //Set up automatic scripting here:
-    //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
-    //Various examples below. 
-
-    /*
-    runScript("v0", "offline.gimmick.action.GimmickSoloNullControl", "", "0");
-    runScript("v0", "offline.escape.enemy.em9000.EsNemesisControlZoneGroup", "", "0");
-    runScript("v0", "offline.escape.enemy.EsEnemyMovePositionUserCurve", "", "0");
-    runScript("v0", "via.physics.Colliders", "", "0");
-    runScript("v0", "via.physics.Collider", "", "0");
-    runScript("ForceAlwaysActive", "", "", "1");
-    runScript("ForceBootEventPlaying", "", "", "1");
-    runScript("IgnoreAreaLimitter", "", "", "1");
-    runScript("DrawSelf", "via.GameObject", "", "0");
-    runScript("UpdateSelf", "via.GameObject", "", "0");*/
+    runScripts();
 }
 WriteUByte(0, ReadUByte(0)); //allows Undo
 
