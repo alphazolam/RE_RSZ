@@ -3,10 +3,10 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.32
+//   Version: 0.33
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: September 27 2021
+//   History: October 13 2021
 //------------------------------------------------
 
 
@@ -19,28 +19,6 @@ void runScripts()
     //Set up automatic scripting here:
     //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
     //Various examples below. 
-    /*runScript("Float STRUCT__Follow_DampingRate[11]", "", "", "*2");
-    runScript("Float STRUCT__Follow_DampingTime[12]", "", "", "*2");
-    runScript("Bool _EnableTightFollow[13]", "", "", "1");
-    runScript("Float STRUCT__DistanceDamping_DampingRate[17]", "", "", "*2");
-    runScript("Float STRUCT__DistanceDamping_DampingTime[18]", "", "", "*2");
-    runScript("Float STRUCT__TightFollow_DampingRate[14]", "", "", "*2");
-    runScript("Float STRUCT__TightFollow_DampingTime[15]", "", "", "*2");
-    runScript("Float _UseOutput[15]", "", "", "1");*/
-    //runScript("DampingRate", "", "", "*10");
-    //runScript("Bool IsEnableValueSetting[0]", "", "", "1");
-    //runScript("Point PitchDeg[2]", "", "", "-90 180");
-    //runScript("Point YawDeg[2]", "", "", "-90 180");
-    //runScript("Float DampingTime[4]", "", "", "*10");
-    //runScript("Source", "", "", "*2");
-    //runScript("Target", "", "", "*2");
-    //runScript("", "", "", "*0.1");
-    //runScript("Float RecommendedVerticalLimitLow[6]", "", "", "90");
-    //runScript("Float PogOffsetYHigh[14]", "", "", "90");
-    //runScript("Float PogOffsetYLow[14]", "", "", "-90");
-    //runScript("Float VerticalLimitHigh[14]", "", "", "90");
-    //runScript("Float VerticalLimitLow[14]", "", "", "90");
-    //runScript("RotationAccVertical", "", "", "5");
     
     /*
     runScript("v0", "offline.gimmick.action.GimmickSoloNullControl", "", "0");
@@ -63,6 +41,7 @@ string fieldToChange;
 string instanceToChange;
 string searchValue;
 wstring changeValue;
+string lastTransform;
 
 string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
     string result = newStr;
@@ -71,12 +50,17 @@ string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
         valueSz = 8;
     float values[valueSz];
     
+        if (r.fieldName == "Default")
+            WriteRSZVariable(r, (wstring)lastTransform);
+    
     if (find((wstring)newStr, " ") != -1)  {
         if (valueSz == 4)
             SScanf( newStr, "%g %g %g %g", values[0], values[1], values[2], values[3] );
         else if (valueSz == 8)
             SScanf( newStr, "%g %g %g %g %g %g %g %g", values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7] );
         for (g=0; g<valueSz; g++) {
+            if (random && values[g] > 0) 
+                values[g] = (0.01) * (float)Random(values[g]);
             if (exists(r.data[g]))
                 if (multiply) {
                     values[g] = r.data[g] * values[g];
@@ -97,9 +81,12 @@ string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
 void ChangeValue(RSZVariable &r) 
 {
     local string oldValue, newValue;
-    if (exists(r.ObjectIndex)) {
-        Printf("Changing %s value at %u from %g to %g \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, Atoi(changeValue));
-        r.ObjectIndex = Atoi(changeValue);
+    if (exists(r.ObjectIndex) && (searchValue == "" || r.ObjectIndex == Atoi(searchValue))) {
+        newValue = changeValue;
+        if (add)
+            SPrintf(newValue, "%i", r.ObjectIndex + Atoi(changeValue));
+        Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, newValue);
+        r.ObjectIndex = Atoi(newValue);
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
         oldValue = ReadRSZVariable(r);
         if (oldValue[0] == 91) {
@@ -111,15 +98,21 @@ void ChangeValue(RSZVariable &r)
                 { v++; return; }
             SPrintf(newValue, "%g", Atof(oldValue) / Atof(changeValue));
         } else if (add) {
-            SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
+            if (find(Lower(ReadRSZVariableName(r)), "guid")!=-1) {
+                newValue = ReadRSZVariable(r);
+                newValue[sizeof(newValue)-2] += Atoi(changeValue);
+            } else
+                SPrintf(newValue, "%g", Atof(oldValue) + Atof(changeValue));
         } else if (random) {
             SPrintf(newValue, "%g", Random(Atof(changeValue)));
         } else {
             newValue = changeValue;
         }
-        
+
         newValue = MakeMultiValue(r, oldValue, newValue);
-        Printf("Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+
+         
+        Printf("Changing %s value at %u from %s to %s \n", r.fieldName, startof(r.Alignment.varStart), oldValue, newValue);
         
         //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
@@ -172,11 +165,11 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
         not = TRUE;
         searchValue = SubStr(searchValue, 1, sizeof(searchValue)-1);
     }
-    if (changeValue[0] == 42)
+    if (changeValue[0] == 0x2A)
         multiply = TRUE;
-    else if (changeValue[0] == 47)
+    else if (changeValue[0] == 0x2F)
         divide = TRUE;
-    else if (changeValue[0] == 126)
+    else if (changeValue[0] == 0x2B)
         add = TRUE;
     else if (changeValue[0] == 0x7E) //~
         random = TRUE;
@@ -188,12 +181,18 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
         r = 0;
         while (exists(RSZFile[lv].Data.RawData.RSZ[r])) {
             v = 0; 
+            if (RSZFile[lv].Data.RawData.RSZ[r].name == "via.Transform")
+                lastTransform = ReadRSZInstance(RSZFile[lv].Data.RawData.RSZ[r]);
+            
             while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
-                && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange && (instanceToChange == ""  
-                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
-                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
+                && (RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  || fieldToChange == "ObjectIndex" 
+                && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex))  && (instanceToChange == ""  
+                || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
+                || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue) != -1 ) ) {
+                //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
+                //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
                     if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
                     && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
                         v++;
