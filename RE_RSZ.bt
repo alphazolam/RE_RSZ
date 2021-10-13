@@ -3,7 +3,7 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.58
+//   Version: 0.581
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
@@ -32,6 +32,7 @@ local wstring DMC5Path <hidden=true> =              "D:\\modmanager\\REtool\\DMC
 local wstring RE2Path <hidden=true> =               "D:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
 local wstring RE3Path <hidden=true> =               "D:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
 local wstring RE8Path <hidden=true> =               "D:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
+local wstring MHRPath <hidden=true> =               "D:\\modmanager\\REtool\\MHR_chunk_000\\natives\\stm\\";
 
 
 //RSZ Parser By Darkness:
@@ -103,6 +104,10 @@ if (AutoDetectGame) {
     } else if (find(lower, "re8") != -1 || find(lower, "evil 8") != -1 || find(lower, "illage") != -1) {
 	    RSZVersion = "RE8";
 	    extractedDir = Lower(RE8Path);
+	    xFmt = "stm\\";
+    } else if (find(lower, "mhr") != -1 || find(lower, "nter R") != -1 || find(lower, "Rise") != -1) {
+	    RSZVersion = "MHRise";
+	    extractedDir = Lower(MHRPath);
 	    xFmt = "stm\\";
     } 
 	Local_Directory += xFmt;
@@ -193,13 +198,14 @@ void AutoDetectVersion() {
             hash = ReadUInt();
             hashName = ReadHashName(hash);
             checkedVersions = 0;
-            if (hash != 0 && checkedVersions < 4 && hashName == "Unknown Class!") {
-                while (checkedVersions < 4 && hashName == "Unknown Class!") {
+            if (hash != 0 && checkedVersions < 5 && hashName == "Unknown Class!") {
+                while (checkedVersions < 5 && hashName == "Unknown Class!") {
                     switch (checkedVersions) {
                         case 0: RSZVersion = "DMC5"; extractedDir = DMC5Path; xFmt = "x64\\";  break;
                         case 1: RSZVersion = "RE2"; extractedDir = DMC5Path; xFmt = "x64\\"; break;
                         case 2: RSZVersion = "RE3"; extractedDir = DMC5Path; xFmt = "stm\\"; break;
-                        default: RSZVersion = "RE8"; extractedDir = DMC5Path; xFmt = "stm\\"; break;
+                        case 3: RSZVersion = "RE8"; extractedDir = DMC5Path; xFmt = "stm\\"; break;
+                        default: RSZVersion = "MHRise"; extractedDir = MHRPath; xFmt = "stm\\"; break;
                     }
                     Local_Directory = lower + xFmt; JsonPath = Lower(FileNameGetPath(GetTemplateFileName()) + "RSZ" + RSZVersion + ".json");
                     ParseJson(JsonPath);
@@ -865,7 +871,7 @@ void ReadRSZPath(wstring data) {
 		localPath = MakeBackslashes(localPath, 0) + getRE3ext(FileNameGetExtension(localPath));
 	} else if (RSZVersion == "RE2") {
 		localPath = MakeBackslashes(localPath, 0) + getRE2ext(FileNameGetExtension(localPath));
-	} else if (RSZVersion == "RE8") {
+	} else if (RSZVersion == "RE8" || RSZVersion == "MHRise") {
 		localPath = MakeBackslashes(localPath, 0) + getRE8ext(FileNameGetExtension(localPath));
 	}
 	if (exists(fullPath)) { 
@@ -1058,7 +1064,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         if (FTell()+4 <= FileSize()) {
             uint Count;
 		    setSize();
-            if (Count > -1 && Count < FileSize() && elementSize > 0 && Count * elementSize <= FileSize() - FTell() && !detectedString(FTell())) {
+            if (Count > -1 && Count < FileSize()  && Count * elementSize <= FileSize() - FTell() && !detectedString(FTell())) { //&& elementSize > 0
                 local uint c <hidden=true>, alignedOffs <hidden=true>;
                 for (c=0; c<Count; c++) {
                     alignedOffs = getAlignedOffset(FTell(), align);
@@ -1895,7 +1901,7 @@ typedef struct {
             SetBackColor(cNone);
         }
     } 
-    if (FEof() && !isOnDemand)
+    if (!finished && FEof())
         i = RSZHeader.instanceCount; 
     
     if (title == "") {
@@ -2475,7 +2481,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
             int numUserData;
             int numRequestSets;
             uint maxRequestSetId;
-            if (RSZVersion == "RE8") {
+            if (RSZVersion == "RE8" || RSZVersion == "MHRise") {
                 int numIgnoreTags;
                 int numAutoGenerateJoints;
             }
@@ -2488,7 +2494,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
             uint64 groupsPtrTbl;
             uint64 dataOffset <name="userDataStreamPtr">;
             uint64 requestSetTbl; 
-            if (RSZVersion == "RE8") {
+            if (RSZVersion == "RE8" || RSZVersion == "MHRise") {
                 uint64 ignoreTagTbl;
                 uint64 autoGenerateJointDescTbl;
             }
@@ -2638,7 +2644,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                     struct ReadStruct staticTransitionEventOffset(0, startof(BHVT));
                     struct ReadStruct staticExpressionTreeConditionsOffset(0, startof(BHVT));
                 } RSZs;
-                if (RSZVersion == "RE8")
+                if (RSZVersion == "RE8" || RSZVersion == "MHRise")
                     uint64 referencePrefabGameObjectsOffset;
         
                 FSeek(stringOffset+startof(this));
