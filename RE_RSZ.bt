@@ -1954,8 +1954,13 @@ typedef struct {
     }
 
     int SizeRSZInstance(RSZInstance &r) { 
+        local ushort lvl = getLevel(startof(r));
         if ((exists(Alignment.varStart) && exists(RSZFile[lvl].Data.RawData.RSZ[ReadUInt(startof(Alignment.varStart))]))) //detectedObject(startof(Alignment.varStart))
             return sizeof(RSZFile[lvl].Data.RawData.RSZ[ReadUInt(startof(Alignment.varStart))]); 
+        local ushort idx;
+        for (idx=getRSZWaypointIndex(startof(r), lvl);idx<RSZFile[lvl].RSZHeader.instanceCount;idx++) 
+            if (startof(RSZFile[lvl].Data.RawData.RSZ[idx]) == startof(r) && !exists(RSZFile[lvl].Data.RawData.RSZ[idx].skipFileData))
+                return sizeof(RSZFile[lvl].Data.RawData.RSZ[idx]);
         return 4;
     }
 
@@ -2671,7 +2676,7 @@ if (ReadUInt()==4343376 || ReadUInt()==5395285 || ReadUInt()==1280262994 || Read
                     while (FTell()+8<FileSize() && ReadUInt(FTell()+4) != 1918989941) FSkip(1);
                     while(FTell() + 8 < FileSize()){
                         if (exists(Uvar[0]))
-                            struct UVAR Uvar <hidden=true>;
+                            struct UVAR Uvar <hidden=false>;
                         else struct UVAR Uvar;
                         FSeek(startof(Uvar)+8);
                         while (FTell() + 8 < FileSize() && ReadUInt(FTell()+4) != 1918989941) 
@@ -4318,7 +4323,7 @@ if (ReadUInt(0) == 1280262994) {
                     if (ShapeInfo.UserDataIndex) {
                         local ushort RSZIdx <hidden=true> = RSZFile[0].ObjectTable[ShapeInfo.UserDataIndex];
                         FSeek(startof(RSZFile[0].Data.RawData.RSZ[RSZIdx]));
-                        struct RSZInstance RSZ;
+                        struct RSZInstance RSZ <size=SizeRSZInstance>;
                         FSeek(startof(Parameters)+80);
                     }
                 } Shape[GroupInfo.NumShapes] <read=ReadShape, optimize=false>; 
@@ -4363,7 +4368,7 @@ if (ReadUInt(0) == 1280262994) {
                     struct RcolGroup Group <read=ReadGroup, size=80>;
                     
                     FSeek(startof(RSZFile.Data.RawData.RSZ[RSZIdx]));
-                    struct RSZInstance RSZ <open=true>;
+                    struct RSZInstance RSZ <size=SizeRSZInstance, open=true>;
                     
                     FSeek(startof(this)+48);
                 } RequestSet <size=48, name=ReadRequestSetName, read=ReadRequestSet>;
