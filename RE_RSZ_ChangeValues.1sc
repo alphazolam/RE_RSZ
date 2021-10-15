@@ -19,18 +19,22 @@ void runScripts()
     //Set up automatic scripting here:
     //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
     //Various examples below. 
+
     
-    /*
-    runScript("v0", "offline.gimmick.action.GimmickSoloNullControl", "", "0");
-    runScript("v0", "offline.escape.enemy.em9000.EsNemesisControlZoneGroup", "", "0");
-    runScript("v0", "offline.escape.enemy.EsEnemyMovePositionUserCurve", "", "0");
-    runScript("v0", "via.physics.Colliders", "", "0");
-    runScript("v0", "via.physics.Collider", "", "0");
-    runScript("ForceAlwaysActive", "", "", "1");
-    runScript("ForceBootEventPlaying", "", "", "1");
-    runScript("IgnoreAreaLimitter", "", "", "1");
-    runScript("DrawSelf", "via.GameObject", "", "0");
-    runScript("UpdateSelf", "via.GameObject", "", "0");*/
+
+    /*runScript("GroupName_Role", "", "12", "3");
+    runScript("GroupName_Role", "", "13", "3");
+    runScript("GroupName_Role", "", "14", "3");
+    runScript("ActionEndOnDamage", "", "", "1");
+    runScript("GUID", "app.ropeway.enemy.em0000.Em0000Context", "", "+1");
+    runScript("ActionStartFlag", "app.ropeway.enemy.em0000.param.ContextParameter", "00000000-0000-0000-0000-000000000000", "4a9f3411-a83b-234f-ad91-1ee6d9147fe8");
+    //runScript("ActionEndFlag", "app.ropeway.enemy.em0000.param.ContextParameter", "", "00000000-0000-0000-0000-000000000000");
+    runScript("_Valid", "", "", "1");
+    runScript("_Radius", "", "", "0.5");
+    runScript("_ShapeType", "", "0", "1");
+    runScript("LoiteringEnable", "", "", "1");
+    runScript("Default", "app.ropeway.SimpleSphereArea", "[0, 0, 0]", "+0");
+    */
 }
 
 
@@ -50,10 +54,9 @@ string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
         valueSz = 8;
     float values[valueSz];
     
-        if (r.fieldName == "Default")
-            WriteRSZVariable(r, (wstring)lastTransform);
-    
-    if (find((wstring)newStr, " ") != -1)  {
+    if (r.fieldName == "Default")
+        result = lastTransform;
+    else if (find((wstring)newStr, " ") != -1)  {
         if (valueSz == 4)
             SScanf( newStr, "%g %g %g %g", values[0], values[1], values[2], values[3] );
         else if (valueSz == 8)
