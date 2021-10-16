@@ -21,6 +21,14 @@ void runScripts()
     //Various examples below. 
 
 
+    //runScript("STRUCT_AIMapEdgeCreate__HasValue", "", "", "0");
+    //runScript("STRUCT_AIMapEdgeCreate__Value", "", "", "0");
+    //runScript("v0", "app.ropeway.gimmick.option.ChangeMapSpaceInfoSettings", "True", "0");
+    //runScript("UpdateSelf", "", "", "0");
+    //runScript("Command", "app.ropeway.gimmick.option.ChangeMapSpaceInfoSettings.Param.Execute", "2", "99");
+    //runScript("Command", "app.ropeway.gimmick.option.ChangeMapSpaceInfoSettings.Param.Execute", "1", "2");
+    //runScript("Command", "app.ropeway.gimmick.option.ChangeMapSpaceInfoSettings.Param.Execute", "99", "1");
+    //runScript("v0", "app.ropeway.OccludeeController", "True", "0");
 
     /*//runScript("AroundEnable", "", "", "1");
     runScript("GroupName_Role", "", "12", "3");
@@ -202,10 +210,11 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
                 && (RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  || fieldToChange == "ObjectIndex" 
                 && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) )  //|| exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[0].ObjectIndex)
-                && (instanceToChange == ""  || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
-                || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue) != -1 ) ) {
-                //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
-                //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
+                && (instanceToChange == ""  
+                //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
+                //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue)     != -1 )    ) {
+                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
+                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
                     if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
                     && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
                         v++;
@@ -256,5 +265,5 @@ if (inputValue) {
     runScripts();
 }
 WriteUByte(0, ReadUByte(0)); //allows Undo
-FileSave();
+//FileSave();
 //via render mesh v11 = mirror animations

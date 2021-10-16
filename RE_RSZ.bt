@@ -676,7 +676,7 @@ typedef struct {
             lvl = parentof(this).lvl;
         if (!RSZFile[lvl].isUserData) {
             for (o=0; o<Header.infoCount; o++) {
-                if (GameObjectInfos.GameObjectInfo[o].Guid.uuid == uuid) {
+                if (GameObjectInfos.GameObjectInfo[o].Guid.uuid == uuid && exists(RSZFile[lvl].ObjectTable[GameObjectInfos.GameObjectInfo[o].id.id])) {
                     local string GameObjectRef <open=suppress>;
                     if (exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[GameObjectInfos.GameObjectInfo[o].id.id]].var[0].data))
                         SPrintf(GameObjectRef, "via.GameObject[%u] -- %s", RSZFile[lvl].ObjectTable[GameObjectInfos.GameObjectInfo[o].id.id], RSZFile[lvl].Data.RawData.RSZ[ObjectTable[GameObjectInfos.GameObjectInfo[o].id.id]].var[0].data);
@@ -2039,8 +2039,8 @@ typedef struct {
         local ushort idx;
         if (exists(parentof(r).lvl))
             local ushort lvl = parentof(r).lvl;
-        //else
-        //    local ushort lvl = getLevel(startof(r)); //this shit always fails...
+        else
+            local ushort lvl = getLevel(startof(r));
         
         if ((exists(Alignment.varStart) && exists(RSZFile[lvl].Data.RawData.RSZ[ReadUInt(startof(Alignment.varStart))]))) //detectedObject(startof(Alignment.varStart))
             return sizeof(RSZFile[lvl].Data.RawData.RSZ[ReadUInt(startof(Alignment.varStart))]); 
