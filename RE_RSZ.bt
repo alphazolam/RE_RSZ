@@ -1901,12 +1901,12 @@ typedef struct {
         idx = ObjectIndex;
     } else if (isOnDemand && exists(RSZIdx)) {
         idx = RSZIdx;
-    } else if (finished && !exists(parentof(this).tempN)) {
+    } else if (false && finished && !exists(parentof(this).tempN)) { // I dont know what to do with this anymore...
         for (idx=getRSZWaypointIndex(FTell(), lvl); idx<RSZFile[lvl].RSZHeader.instanceCount; idx++)
             if (startof(RSZFile[lvl].Data.RawData.RSZ[idx]) == startof(this) && exists(RSZFile[lvl].Data.RawData.RSZ[idx].var)) 
                  break;
     } else {
-        idx = i; //in RawData (not on-demand)
+        idx = i; //in RawData (not on-demand?) Actually do this always
     }
     if (!exists(RSZFile[lvl].InstanceInfos.instanceInfo[idx]))
         idx = 0;
