@@ -3,10 +3,10 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.33
+//   Version: 0.34
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: October 13 2021
+//   History: October 16 2021
 //------------------------------------------------
 
 
@@ -20,11 +20,12 @@ void runScripts()
     //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
     //Various examples below. 
 
-    
 
-    /*runScript("GroupName_Role", "", "12", "3");
-    runScript("GroupName_Role", "", "13", "3");
-    runScript("GroupName_Role", "", "14", "3");
+
+    /*//runScript("AroundEnable", "", "", "1");
+    runScript("GroupName_Role", "", "12", "3");
+    //runScript("GroupName_Role", "", "13", "2");
+    //runScript("GroupName_Role", "", "14", "4");
     runScript("ActionEndOnDamage", "", "", "1");
     runScript("GUID", "app.ropeway.enemy.em0000.Em0000Context", "", "+1");
     runScript("ActionStartFlag", "app.ropeway.enemy.em0000.param.ContextParameter", "00000000-0000-0000-0000-000000000000", "4a9f3411-a83b-234f-ad91-1ee6d9147fe8");
@@ -34,7 +35,16 @@ void runScripts()
     runScript("_ShapeType", "", "0", "1");
     runScript("LoiteringEnable", "", "", "1");
     runScript("Default", "app.ropeway.SimpleSphereArea", "[0, 0, 0]", "+0");
-    */
+    runScript("OverwriteAreaMoveNum", "", "False", "1");
+    runScript("AreaMoveEnableNum", "", "", "10");
+    runScript("_TerritoryTurnBackPosition", "", "", "0 0 0");
+    runScript("AssignMapArea", "", "", "0");
+    runScript("AreaRestrictEnable", "", "", "0");
+    runScript("_TerritoryType", "", "", "0");
+    runScript("_TerritoryTurnBackPointType", "", "", "0");
+    runScript("_TerritoryForceFind", "", "", "0");
+    runScript("LimitedAreaSet", "", "", "0");
+    runScript("RestrictAreaList", "", "", "0");*/
 }
 
 
@@ -191,8 +201,8 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
                 && (RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  || fieldToChange == "ObjectIndex" 
-                && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex))  && (instanceToChange == ""  
-                || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
+                && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) )  //|| exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[0].ObjectIndex)
+                && (instanceToChange == ""  || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
                 || find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue) != -1 ) ) {
                 //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
                 //|| instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
@@ -246,5 +256,5 @@ if (inputValue) {
     runScripts();
 }
 WriteUByte(0, ReadUByte(0)); //allows Undo
-
+FileSave();
 //via render mesh v11 = mirror animations
