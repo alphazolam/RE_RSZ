@@ -19,8 +19,9 @@ void runScripts()
     //Set up automatic scripting here:
     //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
     //Various examples below. 
-
-
+    //runScript("ObjectIndex", "", "", "+1154");
+    //runScript("UpdateSelf", "", "", "0");
+    //runScript("v0", "via.render.Mesh", "", "0");
     //runScript("STRUCT_AIMapEdgeCreate__HasValue", "", "", "0");
     //runScript("STRUCT_AIMapEdgeCreate__Value", "", "", "0");
     //runScript("v0", "app.ropeway.gimmick.option.ChangeMapSpaceInfoSettings", "True", "0");
@@ -102,12 +103,14 @@ string MakeMultiValue(RSZVariable &r, string oldStr, string newStr) {
 void ChangeValue(RSZVariable &r) 
 {
     local string oldValue, newValue;
-    if (exists(r.ObjectIndex) && (searchValue == "" || r.ObjectIndex == Atoi(searchValue))) {
-        newValue = changeValue;
-        if (add)
-            SPrintf(newValue, "%i", r.ObjectIndex + Atoi(changeValue));
-        Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, newValue);
-        r.ObjectIndex = Atoi(newValue);
+    if (exists(r.ObjectIndex) && fieldToChange == "ObjectIndex") { //&& detectedObject(startof(r))
+        if ((searchValue == "" || r.ObjectIndex == Atoi(searchValue)) && ReadUInt(startof(r)) > 3 ) { //&& oldValue != ""
+            newValue = changeValue;
+            if (add)
+                SPrintf(newValue, "%i", r.ObjectIndex + Atoi(changeValue));
+            Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, newValue);
+            r.ObjectIndex = Atoi(newValue);
+        }
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
         oldValue = ReadRSZVariable(r);
         if (oldValue[0] == 91) {
