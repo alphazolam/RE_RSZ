@@ -1668,7 +1668,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             oldDataSz = sizeof(r.data);
             local int paddingSz;
             local int rsInfoPaddingSz;
-            while (!FEof() && ReadByte(startof(r.data)+oldDataSz+paddingSz) == 0)
+            while (!FEof() && startof(r.data)+oldDataSz+paddingSz < startof(r.data)+r.size*2 && ReadByte(startof(r.data)+oldDataSz+paddingSz) == 0)
                 paddingSz++;
             oldDataSz += paddingSz;
             if (exists(Header.resourceCount))
@@ -4010,8 +4010,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             else 
                 stringInsertPt = insertPt;
         } else {
-            while((detectedString(stringInsertPt) || (ReadUByte(stringInsertPt) == 0 && detectedString(getAlignedOffset(stringInsertPt+16, 2)))) && stringInsertPt < RSZOffset)
-            //while((!detectedString(stringInsertPt)
+            while((!detectedString(stringInsertPt) || (ReadUByte(stringInsertPt) == 0 && detectedString(getAlignedOffset(stringInsertPt+16, 2)))) && stringInsertPt < RSZOffset)
+            //while(!detectedString(stringInsertPt) && stringInsertPt < RSZOffset)
                 stringInsertPt++;
             while(detectedString(stringInsertPt))
                 stringInsertPt += sizeof(ReadWString(stringInsertPt));
