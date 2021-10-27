@@ -17,3 +17,5 @@ Currently works for RE8, RE3 and DMC5
 
 # Research
 For information on how the dumps were made, refer to [REFramework](https://github.com/praydog/REFramework/tree/master/reversing/rsz).
+
+The RSZ Parser uses a DLL made by Darkness to quickly get the correct data from the JSON dumps. You can find the source code for that at https://github.com/amir-120/RSZParser
