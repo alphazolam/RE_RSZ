@@ -1657,20 +1657,30 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             WStrcpy(str,WStrDel(s, WStrlen(s), sizeof(s) - WStrlen(s)));
         } else 
             WStrcpy(str,s);
-        
+
+        if (s != " " && s[Strlen(s)-1] == 0x20) { //remove and random spaces from the end
+            Printf("%i %i %i\n", sizeof(s), Strlen(s), s[Strlen(s)-1] );
+            s[Strlen(s)-1] = 0;
+            WStrcpy(str,s); 
+        }
+
         if (exists(r.data)) {
             oldDataSz = sizeof(r.data);
-            local int temp;
+            local int paddingSz;
+            local int rsInfoPaddingSz;
+            while (!FEof() && ReadByte(startof(r.data)+oldDataSz+paddingSz) == 0)
+                paddingSz++;
+            oldDataSz += paddingSz;
             if (exists(Header.resourceCount))
                 for (o=0; o<Header.resourceCount; o++) {
-                    if (exists(ResourceInfos.ResourceInfo[o].pathStr) && ResourceInfos.ResourceInfo[o].pathStr.String == oldData) {
-                        while (!FEof() && ReadByte(startof(ResourceInfos.ResourceInfo[o].pathStr.String)+oldDataSz+temp) == 0)
-                            temp++;
-                        oldDataSz += temp;
+                    if (FTell() < FileSize() && exists(ResourceInfos.ResourceInfo[o].pathStr) && ResourceInfos.ResourceInfo[o].pathStr.String == oldData) {
+                        while (!FEof() && ReadByte(startof(ResourceInfos.ResourceInfo[o].pathStr.String)+oldDataSz+rsInfoPaddingSz) == 0)
+                            rsInfoPaddingSz++;
+                        //oldDataSz += rsInfoPaddingSz;
                     } else if (exists(ResourceInfos.ResourceInfo[o].path) && ResourceInfos.ResourceInfo[o].path == oldData) {
-                        while (!FEof() && ReadByte(startof(ResourceInfos.ResourceInfo[o].path)+oldDataSz+temp) == 0)
-                            temp++;
-                        oldDataSz += temp;
+                        while (!FEof() && ReadByte(startof(ResourceInfos.ResourceInfo[o].path)+oldDataSz+rsInfoPaddingSz) == 0)
+                            rsInfoPaddingSz++;
+                        //oldDataSz += rsInfoPaddingSz;
                     }
                 } 
         }
@@ -1699,7 +1709,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             sizeToInsert = 0;
         
         ForceWriteString(startof(r.size)+4, sizeToInsert+oldDataSz, str); 
-        r.size = (sizeToInsert+oldDataSz)/2;
+        r.size = (sizeToInsert+oldDataSz)/2 + paddingSz;
         
         if (find(oldData, "/") != -1) {
             local byte resourceInfosIncreased = FALSE;
@@ -1904,6 +1914,9 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             }
         }
         
+        if (newFieldName == "")
+            return;
+        
         FileOpen(JsonPath);
         FileSelect(FindOpenFile(JsonPath));
         local int hashOffset = FindFirst(hashToFind, 0);
@@ -1944,14 +1957,14 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                             //FileClose();
                         } else {
                             Printf("Field '%s' not found in %s!\n", parentof(v).fieldName, tempJSONPath);
-                            FileClose();
+                            //FileClose();
                         }
                     }
                 }
             }
         } else {
             Printf("Field '%s' not found in %s!\n", parentof(v).fieldName, JsonPath);
-            FileClose();
+            //FileClose();
         }
         FileSelect(fileNum);
     }
@@ -2562,21 +2575,21 @@ typedef OBJECTID ObjectId <read=ReadObjectIdTitle, write=WriteObjectId>;
         return ""; 
     }
 
-void fakeGameObject() {
+/*void fakeGameObject() {
     FSeek(getAlignedOffset(FTell(), 4));
     local uint size0;
     if (size0 && FTell()+4+size0*2 <= FileSize())
-        FSkip(4 + 2*size0)
+        FSkip(4 + 2*size0);
     FSeek(getAlignedOffset(FTell(), 4));
     local uint size1;
     if (size1 && FTell()+4+size1*2 <= FileSize())
-        FSkip(4 + 2*size1)
+        FSkip(4 + 2*size1);
     FSeek(getAlignedOffset(FTell()+2, 4));
     uint timeScale;
-}
+}*/
 
-/*struct fakeGameObject {
-    
+struct fakeGameObject {
+    FSeek(getAlignedOffset(FTell(), 4));
     uint size0;
     if (size0 && FTell()+size0*2 <= FileSize())
         wchar_t name[size0];
@@ -2586,7 +2599,7 @@ void fakeGameObject() {
         wchar_t tag[size1];
     FSeek(getAlignedOffset(FTell()+2, 4));
     uint timeScale;
-};*/
+};
 
 typedef struct(int structType, uint64 addOffset) {
     uint64 offset;
@@ -3639,13 +3652,19 @@ else {
                 }
                 sizeToAdd += newDataSize;
                 FixObjects(lvl, insertIndex, ctr);
+                i=0;
+                while(exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[i])) {
+                    if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[i].instanceId >= insertIndex)
+                        RSZFile[lvl].RSZUserDataInfos.userDataInfo[i].instanceId += ctr;
+                    i++;
+                }
             }
             
             //Printf("%s %i %i %i %i %i %i %i %i\n", s, structType, lvl, gObjectSz, padBytes, existingPadding, sizeToAdd, FolderInfosEnd, padPt);
             
             //fix offsets
             if (structType == 1) {
-                FixOffsets(0, RSZOffset, GameObjectsEnd+1, gObjectSz, 0);
+                FixOffsets(0, RSZOffset, GameObjectsEnd, gObjectSz, 0);
                 if (sizeof(GameObjectInfos) == 1)
                     FixOffsets(startof(Header.folderInfoTbl), startof(Header.folderInfoTbl)+40, GameObjectsEnd - startof(Header.resourceInfoTbl), gObjectSz, 0);
             } else if (structType == 2) {
@@ -3970,7 +3989,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     
     void HeaderStringWriterMethod(wstring s, ubyte structType, uint lvl) {
         local uint sizeToAdd, padBytes, existingPadding, findFirst;
-        local ubyte isEmbedded = (structType == 3 && RSZVersion == "RE2" || RSZVersion == "DMC5");
+        local ubyte isEmbedded = (structType == 3 && (RSZVersion == "RE2" || RSZVersion == "DMC5"));
         local uint insertPt = startof(ResourceInfos) + sizeof(ResourceInfos) - (Header.resourceCount == 0);
         if (structType == 1)
             insertPt = startof(PrefabInfos) + sizeof(PrefabInfos) - (Header.prefabCount == 0);
@@ -3991,7 +4010,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             else 
                 stringInsertPt = insertPt;
         } else {
-            while(!detectedString(stringInsertPt) && stringInsertPt < RSZOffset)
+            while((detectedString(stringInsertPt) || (ReadUByte(stringInsertPt) == 0 && detectedString(getAlignedOffset(stringInsertPt+16, 2)))) && stringInsertPt < RSZOffset)
+            //while((!detectedString(stringInsertPt)
                 stringInsertPt++;
             while(detectedString(stringInsertPt))
                 stringInsertPt += sizeof(ReadWString(stringInsertPt));
@@ -4405,11 +4425,10 @@ typedef struct {
                     if (RSZVersion != "RE7" && !finished && RSZFile[lvl].InstanceInfos.instanceInfo[i].typeId.HashName == "via.GameObject") 
                     {
                         if (FTell()+4 <= FileSize())
-                            fakeGameObject();//fakeGameObject Test <hidden=true>;
-                        temp = FTell();
-                        if (lastGameObject > 0 && (ReadUInt(FTell()-4) != 3212836864 )) { //Test.timeScale
+                            fakeGameObject Test <hidden=true>;
+                        if (lastGameObject > 0 && (Test.timeScale != 3212836864 )) { 
                             Printf("Seeking from %u to last GameObject at %u\n",  FTell(), lastGameObject); 
-                            FSeek(temp);
+                            FSeek(startof(Test));
                             BLANK blank <read=ReadErrorNotice, bgcolor=cRed>;
                             FSeek(lastGameObject);
                             while (FTell() <= FileSize() - 8) {
@@ -4428,7 +4447,7 @@ typedef struct {
                             SetForeColor(cYellow);
                         } else if (FTell() > lastGameObject) {
                             lastGameObject = FTell();
-                            FSeek(temp);
+                            FSeek(startof(Test));
                             SetForeColor(cNone);
                         }
                     }

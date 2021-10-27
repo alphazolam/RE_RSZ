@@ -3,10 +3,10 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.34
+//   Version: 0.35
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: October 16 2021
+//   History: October 27 2021
 //------------------------------------------------
 
 
@@ -210,25 +210,26 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
             
             while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
-                && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize()))
-                && (RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  || fieldToChange == "ObjectIndex" 
-                && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) )  //|| exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[0].ObjectIndex)
-                && (instanceToChange == ""  
-                //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
-                //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue)     != -1 )    ) {
-                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
-                || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)) ) {
-                    if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
-                    && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
-                        v++;
-                        continue;  
-                    }
-                    a = 0;
-                    if (!exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].Count)) {
-                        ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v]);
-                    } else while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a])) {
-                        ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a]);
-                        a++;
+                && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize())) ) {
+                    if ((RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  
+					|| (fieldToChange == "ObjectIndex" && (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) 
+					|| (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var) && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var.ObjectIndex))))
+                    && (instanceToChange == "" || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
+                    || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title))) ) {
+                    //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
+                    //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue)     != -1 )    ) {
+                        if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
+                        && isParentObjectNamed(RSZFile[lv].Data.RawData.RSZ[r], objectNameToFind) == FALSE) {
+                            v++;
+                            continue;  
+                        }
+                        a = 0;
+                        if (!exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].Count)) {
+                            ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v]);
+                        } else while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a])) {
+                            ChangeValue(RSZFile[lv].Data.RawData.RSZ[r].var[v].var[a]);
+                            a++;
+                        }
                     }
                 }
                 v++; 
