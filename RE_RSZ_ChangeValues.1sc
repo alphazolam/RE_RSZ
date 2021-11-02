@@ -108,7 +108,7 @@ void ChangeValue(RSZVariable &r)
             newValue = changeValue;
             if (add)
                 SPrintf(newValue, "%i", r.ObjectIndex + Atoi(changeValue));
-            Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, startof(r.Alignment.varStart), r.ObjectIndex, newValue);
+            Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, r.Alignment.varStart, r.ObjectIndex, newValue);
             r.ObjectIndex = Atoi(newValue);
         }
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
@@ -213,7 +213,8 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize())) ) {
                     if ((RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  
 					|| (fieldToChange == "ObjectIndex" && (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) 
-					|| (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var) && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var.ObjectIndex))))
+					|| (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var) && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var.ObjectIndex)))
+                    && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldType != UserData_tid)
                     && (instanceToChange == "" || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
                     || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title))) ) {
                     //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
