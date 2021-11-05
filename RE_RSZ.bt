@@ -3,7 +3,7 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.68
+//   Version: 0.681
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
@@ -1868,7 +1868,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         }
 
         if (oldFileSize != FileSize())
-            MessageBox( idOk, "Insert Data", "Press F5 to refresh the template and fix template results");
+            ShowRefreshMessage("");
     }
 
     void WriteRSZVariable(RSZVariable &r, wstring s) {
@@ -4022,8 +4022,8 @@ else {
             
             //RSZFile[lvl].RSZHeader.dataOffset += sizeToAdd - (gObjectSz * cycles) - alignChangeSz - endPadding - existingPadding - padBytes;
 
-            Printf("%i %i %i %i %i %i total %i %i\n", sizeToAdd, (gObjectSz * cycles),  alignChangeSz,  endPadding, existingPadding, padBytes, 
-                sizeToAdd - (gObjectSz * cycles) - alignChangeSz - endPadding - existingPadding - padBytes, gObjectSz * cycles);
+            //Printf("%i %i %i %i %i %i total %i %i\n", sizeToAdd, (gObjectSz * cycles),  alignChangeSz,  endPadding, existingPadding, padBytes, 
+            //    sizeToAdd - (gObjectSz * cycles) - alignChangeSz - endPadding - existingPadding - padBytes, gObjectSz * cycles);
             
             FixRSZUserDataOffsets((startof(RSZFile[lvl].InstanceInfos) + instanceSize + (insertIndex * instanceSize)),
                 sizeToAdd - (gObjectSz * cycles) - endPadding - alignChangeSz, alignChangeSz + endPadding, lvl); 
@@ -4156,7 +4156,7 @@ else {
         
         string ReadGameObjectWriter(ubyte &d) { return "      [Input a GameObjectString here to add a GameObject]"; }
 
-        string ReadGameObjectsOffset(ubyte &o) { local string ss; SPrintf(ss, "+%i", RSZFile[0].RSZHeader.instanceCount - RSZFile[0].ObjectTable[parentof(o).id.id]); return ss; } 
+        //string ReadGameObjectsOffset(ubyte &o) { local string ss; SPrintf(ss, "+%i", RSZFile[0].RSZHeader.instanceCount - RSZFile[0].ObjectTable[parentof(o).id.id]); return ss; } 
 
         string ReadFolderInfoWriter(ubyte &f) { return "      [Input here to add a FolderInfo]"; }
 
@@ -4180,6 +4180,29 @@ typedef uint64 InsertKey <read=ReadInsertHashKey, write=InsertHashKey>;
         }
     }
 
+    void AutoFixGameObjectObjects(byte &u, string s) {
+        local string ss; SPrintf(ss, "%i", RSZFile[0].RSZHeader.instanceCount);
+        local int addAmt = Atoi(s);
+        if (addAmt == 0) 
+            addAmt = InputNumber("Fix ObjectIndexes", "What is the Instance Count of the file you are transferring to?", ss);
+        addAmt -= RSZFile[0].ObjectTable[parentof(parentof(u)).id.id];
+        FixObjects(0, 0, addAmt);
+        MessageBox(idOk, "Fix ObjectIndexes", "You can now copy the bytes of the GameObject.\nRemember to undo your changes in this file after copying.");
+    }
+    
+    wstring ReadFixObjectsMessage(byte &u) { return "      [Input here to fix ObjectIndexes for copy + paste]"; }
+
+    wstring CollectChildGameObjectsString(struct GameObject &g) {
+        local int n;
+        local wstring s = ReadGameObjectString(GameObjectInfos.GameObjectInfo[g.gObjectId].GameObjectString);
+        while (exists(g.GameObjects.ChildObject[n])) {
+            s += CollectChildGameObjectsString(g.GameObjects.ChildObject[n]);
+            n++;
+        }
+        return s;
+    }
+
+    string ReadCompleteGameObjectString(byte &s) { return parentof(s).CompleteGameObjectStringString; };
 
 if (ReadUInt(0) != id_RCOL) { //no RCOL
     if (exists(Header.infoCount)) {
@@ -4200,14 +4223,20 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                         short ukn;
                         int prefabId;
                     }
-                    FSkip(-3);
-                    ubyte AddGameObjectOffset <read=ReadGameObjectsOffset>;
+                    FSkip(-2);
+                    //ubyte AddGameObjectOffset <read=ReadGameObjectsOffset>;
+
                     struct {
+                        byte ObjectIndexFixer <read=ReadFixObjectsMessage, write=AutoFixGameObjectObjects>;
                         local ushort lvl <hidden=true> = 0;
                         n = parentof(this).index;
                         FSeek(startof(RSZFile[0].Data.RawData.RSZ[RSZFile[0].ObjectTable[parentof(this).id.id]]));
-                        struct GameObject Object(0) <open=true>;
-                        FSeek(startof(this)+1);
+                        struct GameObject Object(0);
+                        FSeek(startof(this));
+                        if (exists(Object.GameObjects)) {
+                            local wstring CompleteGameObjectStringString <hidden=true> = CollectChildGameObjectsString(Object);
+                            byte CompleteGameObjectString <read=ReadCompleteGameObjectString>;
+                        } else FSkip(1);
                     } GameObject <size=1>;
                     ubyte GameObjectString <read=ReadGameObjectString, write=ParseGameObjectString>;
                 } GameObjectInfo <name=ReadGRefInfoName, read=ReadGRefInfo, write=WriteGRefInfo>; 
@@ -4216,7 +4245,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
         if (!Header.infoCount) 
             FSkip(-1);
     }
-
+    
     if (exists(Header.folderInfoTbl)) {
         FSeek(Header.folderInfoTbl);
         struct {
@@ -4348,23 +4377,22 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
         local wstring pathString = s;
         local uint stringSizeToAdd = sizeof(s)-2;
         local uint insertPt; 
-        local uint startBound;
-        local uint endBound;
+        local uint startBound = startof(Header)+sizeof(Header);
+        local uint endBound = headerStrings[0]+8;
+        local uint stringInsertPt;
         local ubyte useClipboard;
-        if (exists(ResourceInfos)) {
-            insertPt = startof(ResourceInfos) + sizeof(ResourceInfos) - (Header.resourceCount == 0);
-            startBound = startof(ResourceInfos);
-            endBound = startof(ResourceInfos)+sizeof(ResourceInfos)-(sizeof(ResourceInfos)==1);
-        }
-        if (structType == 1)
-            insertPt = startof(PrefabInfos) + sizeof(PrefabInfos) - (Header.prefabCount == 0);
-        else if (structType == 2)
-            insertPt = startof(UserDataInfos) + sizeof(UserDataInfos) - (Header.userdataCount == 0);
-        else if (structType == 3)
-            insertPt = startof(RSZFile[lvl].RSZUserDataInfos) + sizeof(RSZFile[lvl].RSZUserDataInfos) - (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1);
-        local uint stringInsertPt = insertPt;
         
-        if (structType == 3) { //RSZUserData
+        // 0 = ResourceInfo
+        if (structType == 0)
+            insertPt = startof(ResourceInfos) + sizeof(ResourceInfos) - (Header.resourceCount == 0); 
+        else if (structType == 1) //PrefabInfo
+            insertPt = Header.prefabInfoTbl + Header.prefabCount * 8;//startof(PrefabInfos) + sizeof(PrefabInfos) - (Header.prefabCount == 0);
+        else if (structType == 2)  //UserData
+            insertPt = Header.userdataInfoTbl + Header.userdataCount * 16;//startof(UserDataInfos) + sizeof(UserDataInfos) - (Header.userdataCount == 0);
+        else if (structType == 3)  //RSZUserData
+            insertPt = RSZFile[lvl].RSZHeader.userdataCount * (16 + (8 * isEmbedded));//startof(RSZFile[lvl].RSZUserDataInfos) + sizeof(RSZFile[lvl].RSZUserDataInfos) - (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1);
+        
+        if (structType == 3) {
             if (!isEmbedded && RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.RSZUserDataInfoPath == "") {
                 Printf("ERROR: No filepath to write, aborting...\n");
                 return;
@@ -4382,8 +4410,6 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             else
                 stringInsertPt = RSZOffset;
         }
-        
-        endBound = headerStrings[0];
 
         if (structType != 0 || exists(ResourceInfos.ResourceInfo.pathStr.strOffset) ) { //SCN || (Header.magic == id_SCN && Header.resourceCount == 0)
             (ReadInt64(insertPt) != 0 || structType >= 2) ? sizeToAdd = 16 : sizeToAdd = 0;
@@ -4414,7 +4440,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 stringSizeToAdd += padBytes;
             }
             
-            //Printf("%i %i %i %i %i\n%i %i %i\n", insertPt, stringInsertPt, sizeToAdd, padBytes, existingPadding, startBound, endBound, stringSizeToAdd);
+            Printf("%i %i %i %i %i\n%i %i %i\n", insertPt, stringInsertPt, sizeToAdd, padBytes, existingPadding, startBound, endBound, stringSizeToAdd);
             if (structType == 3) {
                 if (!isEmbedded) {
                     RSZFile[lvl].RSZHeader.dataOffset += sizeToAdd + stringSizeToAdd;
@@ -4427,7 +4453,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     } else
                         FixRSZUserDataOffsets(insertPt, sizeToAdd, 0, lvl);
                 }
-            } else {
+            } else { //regular header strings:
                 FixOffsets(0, startof(GameObjectInfos), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
                 FixOffsets(0, startof(GameObjectInfos), stringInsertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
                 FixOffsets(startBound, endBound, insertPt, FileSize()+sizeToAdd, sizeToAdd, 0);
@@ -4461,8 +4487,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             
             if (sizeToAdd > 0) {
                 InsertBytes(insertPt, sizeToAdd, 0);
-                
             }
+            
             if (structType == 3) {
                 WriteInt(insertPt, oldInstanceCt - (s[0] != 0x20)); 
                 WriteInt(insertPt+4, Atoi(StrDel(s,0,1)));
@@ -4594,7 +4620,8 @@ typedef struct(ubyte isFolder)
 {
     local ushort lvl <hidden=true>;
     local int tempN <hidden=true>, tempJ <hidden=true>, prefabCount <hidden=true>, 
-           gChildCount <hidden=true>, fChildCount <hidden=true>, id <hidden=true>;
+        gChildCount <hidden=true>, fChildCount <hidden=true>, id <hidden=true>;
+    local int gObjectId <hidden=true> = n;
     
     if (exists(parentof(this).lvl)) 
         lvl = parentof(this).lvl;
@@ -5752,6 +5779,8 @@ if (BHVTStart == -1 && headerStringsCount > 1) {
         headerStringsCount++;
     }
     headerStrings[headerStringsCount] = headerStrings[headerStringsCount-1] + sizeof(ReadWString(headerStrings[headerStringsCount-1]));
+    if (headerStrings[0] == 0)
+        headerStrings[0] = startof(Header)+sizeof(Header);
 }
 FSeek(FileSize()); 
 FSkip(-1); 
