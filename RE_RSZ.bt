@@ -70,7 +70,7 @@ local wstring tempWString <hidden=true>;
 local ubyte isAIFile <hidden=true>;
 local char magic[4] <hidden=true>;
 local ushort headerStringsCount <hidden=true>; 
-local uint headerStrings[RSZOffset / 64] <hidden=true>;
+local uint headerStrings[1 + RSZOffset / 64] <hidden=true>;
 local uint dummyArr[1] <hidden=true>;
 local byte PasteBuffer[100000] <hidden=true>; //100KB buffer
 
@@ -3881,7 +3881,7 @@ else {
             local short i, j, ctr, padBytes, newId;
             local int cycles;
             local string tmp = s;
-            local short Arr[(sizeof(s)/8) + 2];
+            local short Arr[(sizeof(s)/4) + 2];
             local short gObjectSz = 0;
             if (structType == 2) //FolderInfo
                 gObjectSz = 8;
@@ -3900,7 +3900,9 @@ else {
             //calculate ObjectTable added size:
             local short index = findS(s, " ");
             local short objectsOnlySz;
+            
             while(index > -1) {
+                
                 Arr[ctr] = index + 1 + ctr;
                 if (s[Arr[ctr]] == 0x2A) {
                     sizeToAdd+=instanceSize+4;
@@ -3914,7 +3916,7 @@ else {
             }
             
             //Parse multiple Gameobjects:
-            local uint compCounts[100], cycleIDs[100], compCtr;
+            local uint compCounts[10000], cycleIDs[10000], compCtr;
             if (structType == 1) {
                 cycles = 0;
                 local ubyte isGameObject;
@@ -4339,12 +4341,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
 
     string ReadNewUserDataInfoMsg(ubyte &d) { return "      [Input a filepath here to add a UserData]"; }
 
-    string ReadNewRSZUserDataInfoMsg(struct _RSZUserDataInfoWriter &d) { 
-        if (RSZVersion != "RE2" && RSZVersion !=  "DMC5")
-            return "      [Input a CombinedKey here and a filepath below to add a RSZUserData]"; 
-        else
-            return "      [Input a CombinedKey here to add a RSZUserData]"; 
-    }
+    string ReadNewRSZUserDataInfoMsg(struct _RSZUserDataInfoWriter &d) {  return "      [Input a CombinedKey here to add a RSZUserData]"; }
 
     string ReadNewRSZUserDataInfoPathMsg(ubyte &u) { 
         if (RSZVersion == "DMC5" || RSZVersion == "RE2")
@@ -4371,7 +4368,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
         local uint sizeToAdd, padBytes, existingPadding, findFirst;
         local ubyte isEmbedded = (structType == 3 && (RSZVersion == "RE2" || RSZVersion == "DMC5"));
         local uint oldInstanceCt = RSZFile[lvl].RSZHeader.instanceCount;
-        local uint oldUserDataCt = RSZFile[lvl].RSZHeader.userdataCount;
+        if (exists(RSZFile[lvl].RSZHeader.userdataCount))
+            local uint oldUserDataCt = RSZFile[lvl].RSZHeader.userdataCount;
         local uint oldFileSize = FileSize();
         local uint addedSzRecord, secAddedSzRecord;
         local wstring pathString = s;
