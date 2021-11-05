@@ -3,10 +3,10 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.35
+//   Version: 0.36
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: October 27 2021
+//   History: Nov 4 2021
 //------------------------------------------------
 
 
@@ -108,7 +108,7 @@ void ChangeValue(RSZVariable &r)
             newValue = changeValue;
             if (add)
                 SPrintf(newValue, "%i", r.ObjectIndex + Atoi(changeValue));
-            Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, r.Alignment.varStart, r.ObjectIndex, newValue);
+            Printf("Changing %s ObjectIndex at %u from %g to %s \n", fieldToChange, r.varStart, r.ObjectIndex, newValue);
             r.ObjectIndex = Atoi(newValue);
         }
     } else if (searchValue == "" || ((!not && ReadRSZVariable(r) == searchValue) || (not && ReadRSZVariable(r) != searchValue))) {
@@ -136,9 +136,9 @@ void ChangeValue(RSZVariable &r)
         newValue = MakeMultiValue(r, oldValue, newValue);
 
          
-        Printf("Changing %s value at %u from %s to %s \n", r.fieldName, r.Alignment.varStart, oldValue, newValue);
+        Printf("Changing %s value at %u from %s to %s \n", r.fieldName, r.varStart, oldValue, newValue);
         
-        //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.Alignment.varStart), oldValue, newValue);
+        //Printf("2 Changing %s value at %u from %s to %s \n", fieldToChange, startof(r.varStart), oldValue, newValue);
         WriteRSZVariable(r, (wstring)newValue);
     }
 }
