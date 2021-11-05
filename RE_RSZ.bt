@@ -3783,11 +3783,11 @@ else {
             local uint nextTell, listCount;
             local ubyte newDataAlignment = GetFieldAlignment(Atoi(StrDel(combinedKeys, 0, 1 + (combinedKeys[1]==0x2A))), 0);
             if (!onlyCalcSize) //remove padding
-                while(in >= 0 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in])) {
+                while(in > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in])) {
                     f = RSZFile[r.lvl].Data.RawData.RSZ[in].fieldCount-1;
-                    while(f >= 0 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f])) {
+                    while(f > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f])) {
                         v=0; while(exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) v++; v--;
-                        while(v >= 0 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) {
+                        while(v > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) {
                             if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding > 0)
                                 DeleteBytes(startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding);
                             v--;
