@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.69
+//   Version: 0.7
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: November 6, 2021
+//   History: November 8, 2021
 
 //------------------------------------------------
 //              Option:                                                            //Effect:
@@ -23,7 +23,7 @@ local int       HideRawData      <hidden=true>        = FALSE;                  
 local int       HideRawNodes     <hidden=true>        = FALSE;                     //Hides RawNodes struct
 local int       SortRequestSets  <hidden=true>        = TRUE;                      //Sorts RCOL RequestSets by their IDs
 local int       ExposeUserDatas  <hidden=true>        = TRUE;                      //Makes RSZFiles that contain embedded userDatas start after the Userdatas, for ctrl+J
-local int       SeekByGameObject <hidden=true>        = TRUE;                      //Will automatically seek between detected GameObjects to fix reading errors
+local int       SeekByGameObject <hidden=true>        = FALSE;                     //Will automatically seek between detected GameObjects to fix reading errors
 
 //Path to Noesis.exe
 local wstring NoesisPath <hidden=true> =            "C:\\Program Files (x86)\\Noesis\\Noesis.exe";
@@ -1023,7 +1023,7 @@ int detectedGuid(uint tell) {
 int detectedObject(uint tell) {
     if (tell+4 <= FileSize()) {
         local int test = ReadInt(tell);
-        if (test < idx && test > 0 && (test > idx - 100 || exists(userDataPath)))
+        if (test < idx && test > 2 && (test > idx - 100 || exists(userDataPath)))
             return true;
     }
     return false;
@@ -1159,6 +1159,11 @@ typedef ubyte Bool <read=ReadBOOL, write=WriteBOOL>;
         else b = 0;
     }
     
+    void WriteCount (uint &c, string s) {
+        InstanceWriterMethod(s, parentof(c).lvl, parentof(parentof(c)).idx, 4, 0, parentof(c).fieldIndex);
+        c = Atoi(s);
+    }
+
 //main typedef for RSZ chunks:
 typedef struct(uint32 classHash, ubyte fieldIndex) {
     local uint varStart <hidden=true> = FTell();
@@ -1194,7 +1199,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
 
     if ((isList) && !exists(parentof(this).Count)) {
         if (FTell()+4 <= FileSize()) {
-            uint Count;
+            uint Count <write=WriteCount>;
             local ushort count <hidden=true> = Count;
             if (!finished) {
                 if (ShowAlignment)
@@ -1207,6 +1212,11 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                     alignedOffs = getAlignedOffset(FTell(), align);
                     if (alignedOffs+elementSize <= FileSize()) {
                         FSeek(alignedOffs);
+                        if (fieldType == Color_tid) {
+                            temp = ((int)ReadUByte(FTell()+2)<<16 | (int)ReadUByte(FTell()+1)<<8 | (int)ReadUByte(FTell()));
+                            SetForeColor(temp); 
+                            SetBackColor(temp);
+                        }
                         if (Count == 1 && (fieldType == Object_tid || (fieldType == Data_tid && detectedObject(FTell())))) {
 			                struct RSZVariable var(classHash, fieldIndex) <open=true>;
                             checkUseSpacers();
@@ -1297,8 +1307,8 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                 if (exists(ObjectIndex) && ObjectIndex > 0)
                     if (fieldType == UserData_tid) {
                         if ((RSZVersion == "DMC5" || RSZVersion == "RE2")) {
-                            if (!exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) || !exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) || RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx == -1) {
-                                Printf("Broken UserData at %i\n", FTell()); 
+                            if ((!exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) || !exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) || RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx == -1)) {
+                                if (finished) Printf("Broken UserData at %i\n", FTell()); 
                             } else if (exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].RSZOffset_Absolute.OffsetAbs)) {
                                 FSeek(RSZFile[lvl].RSZUserDataInfos.userDataInfo[RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx].RSZOffset_Absolute.OffsetAbs);
                                 struct RSZMagic UserData <open=true, size=56, fgcolor=cNone>;
@@ -1557,6 +1567,8 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
     
     if (title == "" && exists(this.size) && exists(this.data) && size > 1 ) {
         title = (wstring)data;
+    } else if (title == "" && findS(fieldName, "ype") != -1) {
+        title = ReadRSZVariable(this);
     } else if (secondTitle == "") {
         if (exists(this.UserData)) {
             secondTitle = ReadRSZMagic(this.UserData);
@@ -1635,7 +1647,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         if (exists(r.UserData)) {
             return ReadRSZMagic(r.UserData);
         } else if (exists(r.var)) {
-            if (r.Count > 0 && exists(r.var[1].RSZ) && exists(r.var[r.Count-1])) {
+            if (r.Count > 0 && exists(r.var[0].RSZ) && exists(r.var[r.Count-1])) {
                 SPrintf(s, "%s - [%i]", ReadRSZInstanceName(r.var[0].RSZ), r.var[r.Count-1].ObjectIndex); 
                 return s;
             } 
@@ -1956,7 +1968,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                             r.data = 0;
                         } else r.data = Atoi(s);
                     } else if (exists(r.ObjectIndex) || exists(r.data_As_Int) || exists(r.data_As_Float)) {
-                        if (exists(r.data_As_Int) || (r.data != 0 && detectedFloat(startof(r.data))) || find(s, "[.]") != -1) { 
+                        if (exists(r.data_As_Int) || (exists(r.data) && r.data != 0 && detectedFloat(startof(r.data))) || find(s, "[.]") != -1) { 
                             WriteFloat(r.varStart, Atof(s));
                         } else {
                             WriteInt(r.varStart, Atoi(s));
@@ -2102,6 +2114,7 @@ typedef struct {
     } else {
         idx = i;
     }
+
     if (!IsInitialized() || (finished && idx && GetFieldCount(RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash) == 0xFFFFFFFF) ) { //|| GetFieldCount(RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.Hash) == 0xFFFFFFFF
         if (!noRetry) {
             ParseJson(JsonPath);  Printf("\nParsing JSON %s\n", JsonPath);
@@ -2158,7 +2171,8 @@ typedef struct {
                 FSeek(getAlignedOffset(FTell(), GetFieldAlignment(hash, z)));   
             
             //Detect and set colors:
-            if (FieldType == Color_tid) {
+            if (FieldType == Color_tid && !IsList) {
+                //local ubyte B = (int)ReadUByte(FTell()+2)<<16, G = (int)ReadUByte(FTell()+1)<<8, R = (int)ReadUByte(FTell());
                 temp = ((int)ReadUByte(FTell()+2)<<16 | (int)ReadUByte(FTell()+1)<<8 | (int)ReadUByte(FTell()));
                 SetForeColor(temp); 
                 SetBackColor(temp);
@@ -2726,6 +2740,7 @@ struct fakeGameObject {
     if (size1 && FTell()+size1*2 <= FileSize())
         wchar_t tag[size1];
     FSeek(getAlignedOffset(FTell()+2, 4));
+
     uint timeScale;
 };
 
@@ -2948,7 +2963,7 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
             uint64 folderInfoTbl;
             uint64 resourceInfoTbl;
             uint64 prefabInfoTbl;
-            if (RSZVersion != "RE7")
+            if (RSZVersion != "RE7") 
                 uint64 userdataInfoTbl;
             uint64 dataOffset;
         }
@@ -3677,7 +3692,7 @@ else {
         string ReadUserDataInfoName(UserDataInfo &u) { return u.hash.HashName; }
     
     typedef struct {
-        if (ReadInt(FTell()+4) != 0)
+        if (RSZVersion == "RE7" || (Header.magic == id_PFB && (RSZVersion == "RE2" || RSZVersion == "DMC5")))
             StringRead pathStr(FTell(), 0, 1); 
         else
             StringRead pathStr(-1, 0, 0);
@@ -3705,31 +3720,31 @@ else {
             return str;
         }
 
-        void CheckRSZVariable(RSZVariable &v, int greaterThan, int addAmt) {
+        void CheckRSZVariable(RSZVariable &v, int greaterThan, int addAmt, byte dontChangeUserDatas) {
             local int fx;
             while(exists(v.var[fx])) {
-                CheckRSZVariable(v.var[fx], greaterThan, addAmt);
+                CheckRSZVariable(v.var[fx], greaterThan, addAmt, dontChangeUserDatas);
                 fx++;
             }
             if (exists(v.ObjectIndex) && v.ObjectIndex > greaterThan)
                 v.ObjectIndex += addAmt;
-            if (exists(v.RSZIdx) && v.RSZIdx > greaterThan)
+            if (!dontChangeUserDatas && exists(v.RSZIdx) && v.RSZIdx > greaterThan)
                 v.RSZIdx += addAmt;
         }
         
-        void CheckInstance(RSZInstance &r, int greaterThan, int addAmt) {
+        void CheckInstance(RSZInstance &r, int greaterThan, int addAmt, byte dontChangeUserDatas) {
             local int fx;
             while(exists(r.var[fx])) {
                 if (exists(r.var[fx].ObjectIndex) || exists(r.var[fx].var))
-                    CheckRSZVariable(r.var[fx], greaterThan, addAmt);
+                    CheckRSZVariable(r.var[fx], greaterThan, addAmt, dontChangeUserDatas);
                 fx++;
             }
         }
         
-        void FixObjects(int lvl, int greaterThan, int addAmt) {
+        void FixObjects(int lvl, int greaterThan, int addAmt, byte dontChangeUserDatas) {
             local int ix, sh;
             while(exists(RSZFile[lvl].Data.RawData.RSZ[ix])) {
-                CheckInstance(RSZFile[lvl].Data.RawData.RSZ[ix], greaterThan, addAmt);
+                CheckInstance(RSZFile[lvl].Data.RawData.RSZ[ix], greaterThan, addAmt, dontChangeUserDatas);
                 ix++;
             }
             ix = 0;
@@ -3757,18 +3772,20 @@ else {
             return newTell - tell;
         }
 
-        void WriteNewRSZStructs(uint tell, string combinedKeys, ubyte onlyCalcSize) {
-            if (combinedKeys != "") {
+        void WriteNewRSZStructs(uint tell, string combinedKeys, int elementSz) {
+            if (Atoi(combinedKeys) > 0 && Atoi(combinedKeys) < 10000) {
+                InsertBytes(tell, elementSz * (Atoi(combinedKeys)), 0);
+                FSkip(elementSz * (Atoi(combinedKeys)));
+                Printf("Inserted %i bytes for %i new list entries at %i\n", elementSz*Atoi(combinedKeys), (Atoi(combinedKeys)), tell);
+            } else if (combinedKeys != "") {
                 local short tempSz, index;
                 local string tmp = combinedKeys;
-                FSeek(tell);
-                while(index > -1) {
-                    Printf("%i\n", index);
-                    
+                
+                while(index > -1) {                    
                     while(tmp[0] == 0x2A || tmp[0] == 0x20)
                         tmp = StrDel(tmp, 0, 1);
 
-                    if (!onlyCalcSize && (!exists(RSZUserDataInfos) || FindFirst(startof(RSZUserDataInfos), classHash) == -1)) { //
+                    if ((!exists(RSZUserDataInfos) || FindFirst(startof(RSZUserDataInfos), classHash) == -1)) { //!elementSz && 
                         tempSz = GetFieldSizeAtOffset(Atoi(tmp), FTell());
                         if (tempSz) {
                             InsertBytes(FTell(), tempSz, 0);
@@ -3783,29 +3800,44 @@ else {
         }
         
         //re-aligns a RSZFile while inserting new structs:
-        int fixAlignment(struct RSZVariable &r, uint insertPt, byte onlyCalcSize, string combinedKeys) {
+        int fixAlignment(struct RSZVariable &r, uint insertPt, int elementSz, string combinedKeys) {
+            
+            local string hashOrCount = combinedKeys;
+            if (exists(r.Count) && elementSz> 0) // && Atoi(combinedKeys) > 0 && Atoi(combinedKeys)  < 1000
+                SPrintf(hashOrCount, "%i\n", Atoi(combinedKeys)-r.Count);
             local ubyte inserted;
-            local short index = findS(combinedKeys, " ");
+            local short index = findS(hashOrCount, " ");
             local uint in = RSZFile[r.lvl].RSZHeader.instanceCount-1, f, v;
             local uint oldFileSize = FileSize();
             local uint nextTell, listCount;
-            local ubyte newDataAlignment = GetFieldAlignment(Atoi(StrDel(combinedKeys, 0, 1 + (combinedKeys[1]==0x2A))), 0);
-            if (!onlyCalcSize) //remove padding
-                while(in > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in])) {
-                    f = RSZFile[r.lvl].Data.RawData.RSZ[in].fieldCount-1;
-                    while(f > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f])) {
-                        v=0; while(exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) v++; v--;
-                        while(v > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) {
-                            if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding > 0)
-                                DeleteBytes(startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding);
-                            v--;
+            local ubyte newDataAlignment = 1;
+            if (hashOrCount[0] == 0x2A) //if it is a normal combinedKey and not a count
+                newDataAlignment = GetFieldAlignment(Atoi(StrDel(hashOrCount, 0, 1 + (hashOrCount[1]==0x2A))), 0);
+            //remove padding
+            while(!exists(RSZFile[r.lvl].Data.RawData.RSZ[in]) && in > -1) 
+                in--;
+            while(in > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in])) {
+                //Printf("IN\n");
+                f = RSZFile[r.lvl].Data.RawData.RSZ[in].fieldCount-1;
+                while(f > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f])) {
+                    v=0; while(exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) v++; v--;
+                    //Printf("F\n");
+                    while(v > -1 && exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) {
+                        //Printf("V\n");
+                        if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding > 0){
+                            DeleteBytes(startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding);
+                            //Printf("deleted %i bytes at %i \n", RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding, startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].padding);
                         }
-                        if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding > 0)
-                            DeleteBytes(startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding);
-                        f--;
+                        v--;
                     }
-                    in--;
+                    if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding > 0) {
+                        DeleteBytes(startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding);
+                        //Printf("deleted %i bytes at %i \n", RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding, startof(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f]) - RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].padding);
+                    }
+                    f--;
                 }
+                in--;
+            }
             
             // go back the other way
             FSeek(startof(RSZFile[r.lvl].Data.RawData.RSZ[0]));
@@ -3814,25 +3846,25 @@ else {
                 f=0;
                 while(exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f])) {
                     if (!inserted && getAlignedOffset(FTell(), newDataAlignment) >= insertPt) {
-                        WriteNewRSZStructs(FTell(), combinedKeys, onlyCalcSize);
+                        WriteNewRSZStructs(FTell(), hashOrCount, elementSz);
                         inserted = true;
                     }
                     //Printf("%i %i @ %i %s %i check\n", in, f, FTell(), RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].fieldName, insertPt);
                     if (!exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].skipFileData)) {
-                        //Printf("%i %i %i\n", FTell(), nextTell, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].elementSize);
+                        //Printf(" %i %i %i %s\n", FTell(), nextTell, RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].elementSize, hashOrCount);
                         if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].isList) {
                             nextTell = getAlignedOffset(FTell(), 4); 
                         } else {
                             nextTell = getAlignedOffset(FTell(), RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].align);
                         }
-                        if (!onlyCalcSize && nextTell - FTell() > 0) {
+                        if (nextTell - FTell() > 0) { //!elementSz && 
                             InsertBytes(FTell(), nextTell - FTell(), 0);
                             //Printf("%i %i, added %i @ %i\n", in, f, nextTell - FTell(), FTell());
                             FSeek(nextTell);
                         }
                         //Printf("FTell %i, %i %i\n", FTell(), getAlignedOffset(FTell(), newDataAlignment), insertPt);
                         if (!inserted && getAlignedOffset(FTell(), newDataAlignment) >= insertPt) {
-                            WriteNewRSZStructs(FTell(), combinedKeys, onlyCalcSize);
+                            WriteNewRSZStructs(FTell(), hashOrCount, elementSz);
                             inserted = true;
                         }
                         if (RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].isList) {
@@ -3840,7 +3872,7 @@ else {
                             v=0;
                             while(exists(RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v])) {
                                 nextTell = getAlignedOffset(FTell(), RSZFile[r.lvl].Data.RawData.RSZ[in].var[f].var[v].align);
-                                if (!onlyCalcSize && nextTell - FTell() > 0) {
+                                if (nextTell - FTell() > 0) { //!elementSz && 
                                     InsertBytes(FTell(), nextTell - FTell(), 0);
                                     //Printf("%i %i, added %i @ %i\n", in, f, nextTell - FTell(), FTell());
                                 }
@@ -3855,9 +3887,9 @@ else {
                 }
                 in++;
             }
-            if (!inserted && combinedKeys != "") {
+            if (!inserted && hashOrCount != "") {
                 FSeek(insertPt);
-                WriteNewRSZStructs(FTell(), combinedKeys, onlyCalcSize);
+                WriteNewRSZStructs(FTell(), hashOrCount, elementSz); 
             }
             return FileSize() - oldFileSize;
         }
@@ -3878,20 +3910,20 @@ else {
         int calculatePaddingAtPoint(uint newEnd, uint oldEnd, ubyte alignment, ubyte method) {
             local int padding, existingPadding;
             if (method == 0)
-                while ((oldEnd+existingPadding) % 16 != 0)
+                while ((oldEnd+existingPadding) % 16 != alignment)
                     existingPadding++;
             else if (method == 1)
-                while (ReadByte(oldEnd+existingPadding) == 0)
+                while (ReadByte(oldEnd+existingPadding) == 0) 
                     existingPadding++;
-            Printf("existingPadding: %i\n", existingPadding);
+            //Printf("existingPadding: %i\n", existingPadding);
             while((newEnd+padding) % 16 != (oldEnd+existingPadding) % 16 )
                 padding++;
-            Printf("minus Padding: %i\n", padding);
+            //Printf("minus Padding: %i\n", padding);
             padding -= existingPadding;
             return padding;
         }
         
-        int InstanceWriterMethod(string s, ushort lvl, short insertIndex, ubyte structType, byte flag) {
+        int InstanceWriterMethod(string s, ushort lvl, uint insertIndex, ubyte structType, byte flag, short fieldIndex) {
             local short i, j, ctr, padBytes, newId;
             local int cycles;
             local string tmp = s;
@@ -3905,6 +3937,8 @@ else {
             local uint oldFileSize = FileSize();
             local short sizeToAdd;
             local short objectCtr;
+            local ubyte isCount = (Atoi(s)>0 && Atoi(s)<1024);
+            
             newId = RSZFile[lvl].RSZHeader.objectCount;
             if (exists(GameObjectInfos)) 
                 local uint GameObjectsEnd = startof(GameObjectInfos) + sizeof(GameObjectInfos) - (Header.infoCount == 0);
@@ -3916,7 +3950,6 @@ else {
             local short objectsOnlySz;
             
             while(index > -1) {
-                
                 Arr[ctr] = index + 1 + ctr;
                 if (s[Arr[ctr]] == 0x2A) {
                     sizeToAdd+=instanceSize+4;
@@ -3969,30 +4002,40 @@ else {
             local uint padPt = (startof(RSZFile[lvl].InstanceInfos) + sizeof(RSZFile[lvl].InstanceInfos));
             local uint existingPadding;
             local int alignChangeSz;
-            while(ReadByte(padPt + existingPadding) == 0 && padPt + existingPadding < startof(RSZFile[lvl].Data)) 
-                existingPadding++;
-            while((padPt + sizeToAdd + padBytes ) % 16 != (padPt) % 16)
-                padBytes++;
-            if (existingPadding + padBytes > 16)
-                padBytes -= 16;
-            sizeToAdd += padBytes;
+            if (structType != 4) { //no Counts
+                while(ReadByte(padPt + existingPadding) == 0 && padPt + existingPadding < startof(RSZFile[lvl].Data)) 
+                    existingPadding++;
+                while((padPt + sizeToAdd + padBytes ) % 16 != (padPt) % 16)
+                    padBytes++;
+                if (existingPadding + padBytes > 16)
+                    padBytes -= 16;
+                sizeToAdd += padBytes;
+            }
             
-            //calculate new Data Size
+            //calculate new Data Size, insert data and fix alignment
             local uint endPadPt;
             local int endPadding;
-            if (insertIndex < RSZFile[lvl].RSZHeader.instanceCount-1 || (exists(BehaviorTree) || exists(RequestSets))) { //  && lvl > 0 
-                local uint newDataInsertPt = startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]);// + sizeToAdd * (lvl > 0);
-                if (flag != 1) {
-                    FixObjects(lvl, insertIndex, ctr); 
+            local uint newDataInsertPt = startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]);
+            if (structType == 4 || insertIndex < RSZFile[lvl].RSZHeader.instanceCount-1 || (exists(BehaviorTree) || exists(RequestSets))) { //  && lvl > 0 
+                if (structType == 4) { //Counts
+                    //local string ss; 
+                    //SPrintf(ss, "%i", Atoi(tmp)+1); 
+                    //WriteInt(startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]), Atoi(tmp));
+                    newDataInsertPt = startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]) + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]);
+                } else if (flag != 1) {
+                    FixObjects(lvl, insertIndex, ctr, 0); 
                     i=0;
                     while(exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo[i])) {
                         if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[i].instanceId >= insertIndex)
                             RSZFile[lvl].RSZUserDataInfos.userDataInfo[i].instanceId += ctr;
                         i++;
-                    }
+                    } 
                 }
-                endPadPt = startof(RSZFile[lvl].Data) + sizeof(RSZFile[lvl].Data);                
-                if (flag != 1)
+                endPadPt = startof(RSZFile[lvl].Data) + sizeof(RSZFile[lvl].Data);    
+                if (structType == 4) { //count
+                    alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex], startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex])
+                        + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]), RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex].elementSize, s);
+                } else if (flag != 1)
                     alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[0], newDataInsertPt, 0, s);
 
                 local uint newEndPadPt = endPadPt+alignChangeSz;
@@ -4031,13 +4074,10 @@ else {
                     FixOffsets(startof(ResourceInfos), headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
                 } else
                     FixOffsets(0, headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
-            }// else if (structType == 3 && !isEmbedded)
-             //   FixOffsets(startof(Header)+sizeof(Header), headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
+            }
             
             if (RSZVersion == "RE2" || RSZVersion == "RE3" || RSZVersion == "DMC5")
                 RSZFile[lvl].RSZHeader.instanceOffset = 48 + RSZFile[lvl].RSZHeader.objectCount * 4;
-            
-            //RSZFile[lvl].RSZHeader.dataOffset += sizeToAdd - (gObjectSz * cycles) - alignChangeSz - endPadding - existingPadding - padBytes;
 
             //Printf("%i %i %i %i %i %i total %i %i\n", sizeToAdd, (gObjectSz * cycles),  alignChangeSz,  endPadding, existingPadding, padBytes, 
             //    sizeToAdd - (gObjectSz * cycles) - alignChangeSz - endPadding - existingPadding - padBytes, gObjectSz * cycles);
@@ -4080,15 +4120,15 @@ else {
                         }
                 }
             } 
-            
-            if (endPadding > 0) {
-                Printf("Inserting %i padding bytes at %i\n", endPadding, newEndPadPt);
-                InsertBytes(newEndPadPt, endPadding, 0);
-            }
-            if (endPadding < 0) {
-                DeleteBytes(newEndPadPt, -endPadding);
-                Printf("Deleting %i padding bytes at %i\n", -endPadding, newEndPadPt);
-            }
+            if (endPadding && newEndPadPt < FileSize())
+                if (endPadding > 0) {
+                    Printf("Inserting %i padding bytes at %i\n", endPadding, newEndPadPt);
+                    InsertBytes(newEndPadPt, endPadding, 0);
+                }else if (endPadding < 0) {
+                    Printf("Deleting %i padding bytes at %i\n", -endPadding, newEndPadPt);
+                    DeleteBytes(newEndPadPt, -endPadding);
+                    
+                }
 
             if (objectInsertPt == 0) 
                 objectInsertPt = startof(RSZFile[lvl].ObjectTable) + sizeof(RSZFile[lvl].ObjectTable);
@@ -4100,6 +4140,8 @@ else {
             
             //insert new instanceInfos
             for (i=0; i<ctr; i++) {
+                //Printf(" i %i, \n startof(RSZFile[0].InstanceInfos) %i \n instanceSize %i \n insertIndex * instanceSize %i \n adds up to %i \n plus  %i \n", 
+                //    i, startof(RSZFile[lvl].InstanceInfos), instanceSize, insertIndex * instanceSize, startof(RSZFile[lvl].InstanceInfos) + instanceSize + (insertIndex * instanceSize), instanceSize*i);
                 InsertBytes(startof(RSZFile[lvl].InstanceInfos) + instanceSize + (insertIndex * instanceSize) + instanceSize*i, instanceSize, 0);
                 tmp = SubStr(s, Arr[i], Arr[i+1] - Arr[i]);
                 if (tmp[0] == 0x2A)
@@ -4107,7 +4149,6 @@ else {
                 WriteUInt(startof(RSZFile[lvl].InstanceInfos) + instanceSize + (insertIndex * instanceSize) + instanceSize*i, Atoi(tmp)); //Hash
                 WriteUInt(4 + startof(RSZFile[lvl].InstanceInfos) + instanceSize + (insertIndex * instanceSize) + instanceSize*i, Atoi(StrDel(tmp, 0, findS(tmp, "_")+1))); //CRC
             }
-            
             //insert new objects
             objectCtr = 0;
             for (i=0; i<ctr; i++) {
@@ -4130,7 +4171,9 @@ else {
                     WriteBytes(buffer, GameObjectsEnd, gObjectSz);
                     if (Header.magic == id_PFB) { //PFB
                         WriteInt(GameObjectsEnd, cycleIDs[i]);
-                        WriteInt(GameObjectsEnd+4, -1);
+                        if (i == 0)
+                            WriteInt(GameObjectsEnd + 4, -1);
+                        else WriteInt(GameObjectsEnd + 4, cycleIDs[0]);
                         WriteInt(GameObjectsEnd+8, compCounts[i]);
                     } else {
                         WriteRandomGUID(GameObjectsEnd);
@@ -4152,7 +4195,9 @@ else {
                     FolderInfosEnd += gObjectSz;
                 }
             }
-            if (structType > 0) 
+            if (structType == 4)
+                SetCursorPos(newDataInsertPt);
+            else if (structType > 0) 
                 SetCursorPos(startof(RSZFile[0].Data.RawData)+sizeof(RSZFile[0].Data.RawData)+sizeToAdd);
             else if (exists(RSZFile[lvl].Data.RawData.RSZ[insertIndex]))
                 SetCursorPos(startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) +sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) + sizeToAdd - endPadding - alignChangeSz // - existingPadding
@@ -4162,7 +4207,7 @@ else {
                 if (GetBookmarkName(i) == "RSZ_Data_InsertPt") 
                     RemoveBookmark(i);
             addInsertBookmark();
-
+            
             Printf("Insert your new data at position %i\n", GetCursorPos());
             ShowRefreshMessage("Aligned RSZ Data must be pasted after the pink marker.\n");
             return FileSize() - oldFileSize;
@@ -4170,7 +4215,7 @@ else {
         
         void WriteNewGameObject(ubyte &d, string s) {
             if (sizeof(s) > 9 && findS(s, "_") != -1) 
-                InstanceWriterMethod(s, 0, RSZFile[0].RSZHeader.instanceCount-1, 1, false);
+                InstanceWriterMethod(s, 0, RSZFile[0].RSZHeader.instanceCount-1, 1, false, 0);
         }
         
         string ReadGameObjectWriter(ubyte &d) { return "      [Input a GameObjectString here to add a GameObject]"; }
@@ -4182,9 +4227,9 @@ else {
         void WriteNewFolderInfo(ubyte &f, string s) { 
             local string ss;
             switch (RSZVersion) {
-                case "RE7": InstanceWriterMethod(" *-1365059124_-1512238498", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false); break;
-                case "RE2": case "RE3": case "DMC5": InstanceWriterMethod(" *-1365059124_246280887", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false); break;
-                case "RE8": case "MHRise": InstanceWriterMethod(" *-1365059124_-1017511022", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false); break;
+                case "RE7": InstanceWriterMethod(" *-1365059124_-1512238498", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break;
+                case "RE2": case "RE3": case "DMC5": InstanceWriterMethod(" *-1365059124_246280887", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break;
+                case "RE8": case "MHRise": InstanceWriterMethod(" *-1365059124_-1017511022", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break;
                 default: break;
             }            
         }
@@ -4195,7 +4240,7 @@ typedef uint64 InsertKey <read=ReadInsertHashKey, write=InsertHashKey>;
     
     void InsertHashKey(InsertKey &k, string s) {
         if (s[0] == 0x20 && sizeof(s) > 9) {
-            InstanceWriterMethod(s, parentof(parentof(parentof(k))).lvl, parentof(k).index, 0, false);
+            InstanceWriterMethod(s, parentof(parentof(parentof(k))).lvl, parentof(k).index, 0, false, 0);
         }
     }
 
@@ -4205,7 +4250,7 @@ typedef uint64 InsertKey <read=ReadInsertHashKey, write=InsertHashKey>;
         if (addAmt == 0) 
             addAmt = InputNumber("Fix ObjectIndexes", "What is the Instance Count of the file you are transferring to?", ss);
         addAmt -= RSZFile[0].ObjectTable[parentof(parentof(u)).id.id];
-        FixObjects(0, 0, addAmt);
+        FixObjects(0, 0, addAmt, 0);
         MessageBox(idOk, "Fix ObjectIndexes", "You can now copy the bytes of the GameObject.\nRemember to undo your changes in this file after copying.");
     }
     
@@ -4309,7 +4354,10 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     if (exists(Header.resourceInfoTbl)) {
 	    FSeek(Header.resourceInfoTbl);
 	    struct {
-            ubyte ResourceInfoWriter <name="ResourceInfo Writer", read=ReadNewResourceInfoMsg, write=WriteNewResourceInfo>; FSkip(-1);
+            struct _ResourceInfoWriter {
+                ubyte PrintList <name="Print list", read=ReadPrintResourceList, write=PrintResourceList>;
+            } ResourceInfoWriter <name="ResourceInfo Writer", read=ReadNewResourceInfoMsg, write=WriteNewResourceInfo>; 
+            FSkip(-1);
             local string noResourceInfoOutput <hidden=true>;
             if (Header.resourceCount)
                 Resource_Info ResourceInfo[Header.resourceCount] <optimize=false>;
@@ -4321,19 +4369,15 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     if (exists(Header.prefabCount) && Header.prefabCount) {
         FSeek(Header.prefabInfoTbl);
         struct {
-            ubyte PrefabInfoWriter <name="PrefabInfo Writer", read=ReadNewPrefabInfoMsg, write=WriteNewPrefabInfo>; FSkip(-1);
+            struct _PrefabInfoWriter {
+                ubyte PrintList <name="Print list", read=ReadPrintPrefabList, write=PrintPrefabList>;
+            } PrefabInfoWriter <name="PrefabInfo Writer", read=ReadNewPrefabInfoMsg, write=WriteNewPrefabInfo>; 
+            FSkip(-1);
             for (i=0; i<Header.prefabCount; i++)
                 struct PreFab {
                     local uint idx <hidden=true> = i;
                     struct StringRead id(-1, 0, -1);
                     int parentId;
-                    //local wstring path = id.String;
-                    if (parentId) {
-                        FSeek(parentId); 
-                        wstring parentPath;
-                    }
-                    FSeek(startof(parentId)+4);
-                    
                 } PrefabInfo <name=ReadPreFabName, read=ReadPreFab, write=WritePreFab>;
         } PrefabInfos;
     }
@@ -4353,9 +4397,9 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
 
     void WritePreFab(PreFab &p, string s) { WriteStringRead(p.id, s); }
 
-    string ReadNewResourceInfoMsg(ubyte &d) { return "      [Input a filepath here to add a ResourceInfo]"; }
+    string ReadNewResourceInfoMsg(struct _ResourceInfoWriter &d) { return "      [Input a filepath here to add a ResourceInfo]"; }
 
-    string ReadNewPrefabInfoMsg(ubyte &d) { return "      [Input a filepath here to add a PrefabInfo]"; }
+    string ReadNewPrefabInfoMsg(struct _PrefabInfoWriter &d) { return "      [Input a filepath here to add a PrefabInfo]"; }
 
     string ReadNewUserDataInfoMsg(ubyte &d) { return "      [Input a filepath here to add a UserData]"; }
 
@@ -4368,6 +4412,30 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             else
                 return "      [Input here to prepare RSZUserData clipboard bytes for insertion]";
         else return "";
+    }
+
+    string ReadPrintPrefabList(ubyte &r) { return "      [Input here to print all PrefabInfos to the Output window]"; }
+    
+    string ReadPrintResourceList(ubyte &r) { return "      [Input here to print all ResourceInfos to the Output window]"; }
+
+    void PrintPrefabList(ubyte &r, string s) {
+        o=0;
+        local string output;
+        while(exists(parentof(parentof(r)).PrefabInfo[o])) {
+            SPrintf(output, "%s%s\n", output, parentof(parentof(r)).PrefabInfo[o].id.String);
+            o++;
+        }
+        Printf(output);
+    }
+
+    void PrintResourceList(ubyte &r, string s) {
+        o=0;
+        local string output;
+        while(exists(parentof(parentof(r)).ResourceInfo[o])) {
+            SPrintf(output, "%s%s\n", output, parentof(parentof(r)).ResourceInfo[o].pathStr.String);
+            o++;
+        }
+        Printf(output);
     }
     
     void StoreNewRSZUserDataInfoPath(ubyte &u, wstring s) { 
@@ -4383,7 +4451,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     }
     
     void HeaderStringWriterMethod(wstring s, ubyte structType, uint lvl) {
-        local uint padBytes, existingPadding, findFirst;
+        local int padBytes, existingPadding, findFirst;
         local ubyte isEmbedded = (structType == 3 && (RSZVersion == "RE2" || RSZVersion == "DMC5"));
         local uint oldInstanceCt = RSZFile[lvl].RSZHeader.instanceCount;
         if (exists(RSZFile[lvl].RSZHeader.userdataCount))
@@ -4413,7 +4481,23 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             }
         }
         
-        if (structType != 0 || exists(ResourceInfos.ResourceInfo.pathStr.strOffset) ) {
+        if (RSZVersion == "RE7" || (Header.magic == id_PFB && (RSZVersion == "RE2" || RSZVersion == "DMC5"))) {
+            insertPt = headerStrings[headerStringsCount];
+            padBytes = calculatePaddingAtPoint(insertPt + stringSizeToAdd, insertPt, insertPt % 16, 1);
+            if (padBytes > 0)
+                InsertBytes(insertPt, padBytes, 0);
+            if (padBytes < 0)
+                DeleteBytes(insertPt, -padBytes);
+            FixOffsets(0, startof(GameObjectInfos), insertPt, FileSize()+stringSizeToAdd+padBytes, stringSizeToAdd+padBytes, 0);
+            InsertBytes(insertPt, stringSizeToAdd, 0);
+            WriteWString(insertPt, s);
+            FSeek(insertPt+1);
+            while(FTell() < insertPt + stringSizeToAdd) {
+                if (ReadShort(FTell()) == 2560) //newline
+                    WriteShort(FTell(), 0);
+                FSkip(2);
+            }
+        } else { // if (structType != 0 || exists(ResourceInfos.ResourceInfo.pathStr.strOffset) )
             local uint sizeToAdd = 8;
             if (structType == 0) { // ResourceInfo
                 insertPt = startof(ResourceInfos) + sizeof(ResourceInfos) - (Header.resourceCount == 0); 
@@ -4435,6 +4519,20 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     pathString = RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.RSZUserDataInfoPath;
                     stringSizeToAdd = sizeof(pathString)-2;
                 }
+                Printf("path %s\n", pathString);
+                local uint uidx = oldInstanceCt - (s[0] != 0x20);
+                if (FindFirst(Atoi(StrDel(s,0,1))) != -1) { //if the userdata is already in the file but unused
+                    for (h=0; h<RSZFile[lvl].RSZHeader.instanceCount; h++) {
+                        if (ReadInt(startof(RSZFile[lvl].InstanceInfos.instanceInfo[h])) == Atoi(StrDel(s,0,1)) && !exists(RSZFile[lvl].Data.RawData[h])) {
+                            uidx =  h;
+                            ctr = 0;
+                            //break;
+                        }
+                    }
+                    if (ctr == 0)
+                        Printf("Using existing unused UserData Instance %i\n", uidx);
+                }
+                //ctr = 0;
                 startBound = startof(RSZFile[lvl].RSZHeader);
                 if (RSZVersion != "RE2" && RSZVersion != "DMC5" && exists(RSZFile[lvl].RSZUserDataInfos.userDataInfo.path.String) 
                   && startof(RSZFile[lvl].RSZUserDataInfos.userDataInfo.path.String) + sizeof(RSZFile[lvl].RSZUserDataInfos.userDataInfo.path.String) > stringInsertPt)
@@ -4447,7 +4545,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             }
             
             sizeToAdd *= ctr;
-            
+            local uint clipboardBytes;
+
             if (isEmbedded) {
                 sizeToAdd = 24;
                 stringSizeToAdd = 0;
@@ -4456,7 +4555,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 sizeToAdd += padBytes;
                 if (RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize >= 52 && PasteBuffer[0]==82 && PasteBuffer[1]==83 && PasteBuffer[2]==90) {
                     useClipboard = true;
-                    sizeToAdd += RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize;
+                    clipboardBytes = RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize;
+                    sizeToAdd += clipboardBytes;
                 }
             } else {
                 padBytes = calculatePaddingAtPoint(stringInsertPt + stringSizeToAdd + sizeToAdd, stringInsertPt, stringInsertPt % 16, 1);
@@ -4478,8 +4578,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                         FixRSZUserDataOffsets(insertPt, sizeToAdd, 0, lvl);
                 }
             } else { //regular header strings:
-                FixOffsets(0, startof(GameObjectInfos), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
-                FixOffsets(0, startof(GameObjectInfos), stringInsertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
+                FixOffsets(0, sizeof(Header), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
+                FixOffsets(0, sizeof(Header), stringInsertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
                 FixOffsets(startBound, endBound, insertPt, FileSize()+sizeToAdd, sizeToAdd, 0);
                 //FixOffsets(startBound, endBound, stringInsertPt+(sizeToAdd*ctr), FileSize()+sizeToAdd+stringSizeToAdd, sizeToAdd + stringSizeToAdd, 0);
             }
@@ -4487,7 +4587,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             if (structType == 3 && Abs(Atoi(StrDel(s, 0, 1))) > 10000) {
                 RSZFile[lvl].RSZHeader.userdataCount += 1;
                 silenceMessages = TRUE;
-                InstanceWriterMethod((string)s, lvl, RSZFile[lvl].RSZHeader.instanceCount-1, 0, false);
+                addedSzRecord = InstanceWriterMethod((string)s, lvl, RSZFile[lvl].RSZHeader.instanceCount-1, 0, false, 0);
                 if (exists(UserDataInfos.UserDataInfoWriter) && MessageBox(idYes | idNo, "Insert Data", "Do you want to insert a matching UserDataInfo in the file header?") == idYes) {
                     secAddedSzRecord = FileSize();
                     WriteNewUserDataInfo(UserDataInfos.UserDataInfoWriter, pathString);
@@ -4495,9 +4595,11 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     WriteInt(startof(UserDataInfos)+sizeof(UserDataInfos)-(sizeof(RSZFile[lvl].RSZUserDataInfos)==1), Atoi(StrDel(s, 0, 1)));
                 }
                 silenceMessages = FALSE;
-                addedSzRecord = FileSize() - oldFileSize;
-                stringInsertPt += addedSzRecord;
-                insertPt += addedSzRecord;
+                if (addedSzRecord > 0) {
+                    local uchar buffer[addedSzRecord];
+                    ReadBytes(buffer, RSZOffset+4, addedSzRecord);
+                    DeleteBytes(RSZOffset+4, addedSzRecord);
+                }
             } else
                 addedSzRecord = 0;
             
@@ -4510,34 +4612,42 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     WriteWString(stringInsertPt, s);
                 } else for (h=0; h<ctr; h++) {
                     (h < ctr - 1) ? sizeWStr = Arr[h+1]-Arr[h] : sizeWStr = (sizeof(tmp)/2) - Arr[h];
-                    WriteWString(stringInsertPt + Arr[h]*2, WSubStr(tmp, Arr[h], sizeWStr ));
+                    if (sizeWStr > 0)
+                        WriteWString(stringInsertPt + Arr[h]*2, WSubStr(tmp, Arr[h], sizeWStr ));
                     WriteShort(stringInsertPt + Arr[h]*2 + sizeWStr*2 - 2, 0);
                 }
-                    
             }
             
-            if (sizeToAdd > 0) {
-                InsertBytes(insertPt, sizeToAdd, 0);
-            }
+            if (sizeToAdd > 0)
+                InsertBytes(insertPt, sizeToAdd - clipboardBytes, 0);
             
+            //return;
             if (structType == 3) {
-                WriteInt(insertPt, oldInstanceCt - (s[0] != 0x20)); 
+                WriteInt(insertPt, uidx); 
                 WriteInt(insertPt+4, Atoi(StrDel(s,0,1)));
                 if (isEmbedded) {
-                    while(FileSize()%16 != 0) 
-                        InsertBytes(FileSize(), 1, 0);
+                    Printf("Hash of %s is %i\n", pathString, hash_wide((string)pathString));
                     WriteInt(insertPt + 8, hash_wide((string)pathString));
                     if (useClipboard) {
-                        WriteInt64(insertPt + 16, getAlignedOffset(insertPt + 24, 16) - startof(RSZFile[lvl].RSZHeader));
-                        Printf("Pasted %i bytes to position %i\n", RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize, getAlignedOffset(insertPt + 24, 16) );
-                        WriteBytes(PasteBuffer, getAlignedOffset(insertPt + 24, 16) , RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize);
+                        local uint userDataInsertPt = startof(RSZFile[lvl].Data) + sizeToAdd - clipboardBytes + stringSizeToAdd;//getAlignedOffset(insertPt + 24, 16) - startof(RSZFile[lvl].RSZHeader
+                        WriteInt64(insertPt + 16, userDataInsertPt - startof(RSZFile[lvl].RSZHeader)+addedSzRecord);
+                        Printf("Pasted %i bytes to position %i\n", RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize, userDataInsertPt);
+                        InsertBytes(userDataInsertPt, clipboardBytes, 0);
+                        WriteBytes(PasteBuffer, userDataInsertPt, RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize);
+                        WriteUInt(insertPt + 12, RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize);
                     } else {
+                        while(FileSize()%16 != 0) 
+                            InsertBytes(FileSize(), 1, 0);
                         WriteInt64(insertPt + 16, startof(RSZFile[0].Data) - startof(RSZFile[lvl].RSZHeader));
                         SetCursorPos(FileSize());
                         addInsertBookmark();
                     }
                 } else {
                     WriteInt64(insertPt + 8, stringInsertPt + sizeToAdd - (startof(RSZFile[lvl].RSZHeader) + addedSzRecord - (addedSzRecord - secAddedSzRecord)));
+                }
+                if (addedSzRecord > 0) {
+                    InsertBytes(FindFirst("RSZ")+4, addedSzRecord, 0);
+                    WriteBytes(buffer, FindFirst("RSZ")+4, addedSzRecord);
                 }
             } else if (structType == 2) {
                 WriteInt64(insertPt + 8, stringInsertPt + sizeToAdd);
@@ -4546,15 +4656,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     WriteUInt64(insertPt + (sizeToAdd / ctr) * h, stringInsertPt + sizeToAdd + Arr[h]*2);
             } else 
                 WriteUInt64(insertPt, stringInsertPt + sizeToAdd);
-                
-        } else { 
-            while ((insertPt + stringSizeToAdd + padBytes) % 16 != insertPt % 16 )
-                padBytes++;
-            stringSizeToAdd += padBytes;
-            FixOffsets(0, startof(GameObjectInfos), insertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
-            InsertBytes(insertPt, stringSizeToAdd, 0);
-            WriteWString(insertPt, s);
-        } 
+        }
         
         if (structType == 0) //ResourceInfo
             Header.resourceCount += ctr;
@@ -4573,9 +4675,9 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
         }
     }
 
-    void WriteNewResourceInfo(ubyte &d, wstring s) { HeaderStringWriterMethod(s, 0, 0); }
+    void WriteNewResourceInfo(struct _ResourceInfoWriter &d, wstring s) { HeaderStringWriterMethod(s, 0, 0); }
 
-    void WriteNewPrefabInfo(ubyte &p, wstring s) {  HeaderStringWriterMethod(s, 1, 0); }
+    void WriteNewPrefabInfo(struct _PrefabInfoWriter &p, wstring s) {  HeaderStringWriterMethod(s, 1, 0); }
 
     void WriteNewUserDataInfo(ubyte &u, wstring s) {  HeaderStringWriterMethod(s, 2, 0);  }
 
@@ -4584,6 +4686,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             r.RSZUserDataInfoPath = SubStr(s, find(StrDel(s,0,1), " ")+2, -1);
             s = SubStr(s, 0, find(StrDel(s,0,1), " ")+1);
         }
+        
         HeaderStringWriterMethod(s, 3, parentof(parentof(r)).lvl); 
     }
     
@@ -4633,8 +4736,9 @@ typedef struct {
     }
     
     string ReadRSZUserDataInfo(RSZUserDataInfo &u) {  
-        if (exists(u.JsonPathHash))
-            return ReadRSZMagicName(RSZFile[getLevelRSZ(u.RSZOffset_Absolute.OffsetAbs)]);
+        local ushort lvl = getLevelRSZ(u.RSZOffset_Absolute.OffsetAbs);
+        if (exists(u.JsonPathHash) && exists(RSZFile[lvl]))
+            return ReadRSZMagicName(RSZFile[lvl]);
         return u.path.String; 
     }
 
@@ -4875,7 +4979,7 @@ typedef struct {
     else 
         INSTANCEINFO InstanceInfos;
     
-    if (exists(RSZHeader.userdataOffset) && RSZHeader.userdataCount > 0 || BHVTStart == -1) {
+    if ((exists(RSZHeader.userdataOffset) && RSZHeader.userdataCount > 0) || (RSZVersion != "RE7" && BHVTStart == -1)) {
 	    FSeek(startof(RSZHeader) + RSZHeader.userdataOffset);
         typedef struct {
             struct _RSZUserDataInfoWriter {
@@ -5076,12 +5180,16 @@ typedef struct {
             return m.Data.MainObject[0].title;
         else if (exists(m.Data.MainFolder[0].title))
             return m.Data.MainFolder[0].title;
-        else {
+        else if (finished) {
             local uint f;
             for (f=0; f<level; f++) {
                 if (startof(RSZFile[f].RSZHeader) == startof(m) && exists(RSZFile[f].ObjectTable) && RSZFile[f].ObjectTable[0] >= 0 && exists(RSZFile[f].Data.RawData.RSZ[RSZFile[f].ObjectTable[0]].title) ) 
                     return RSZFile[f].Data.RawData.RSZ[RSZFile[f].ObjectTable[0]].title;
             }
+        } else if (RSZVersion == "RE2" || RSZVersion == "DMC5") {
+            local int tst = FindFirst((wstring)"assets:",1,0,0,0.0,1,startof(m),0,24);
+            if (tst != -1)
+                return ReadWString(tst);
         }
         return ""; 
     }
@@ -5521,7 +5629,7 @@ void WriteNewRequestSet(ubyte &r, string s) {
     local uchar buffer[80];
     local uint oldFileSize = FileSize();
     
-    local uint instanceMethodSize = InstanceWriterMethod(s, 0, RSZFile[0].ObjectTable[Header.numRequestSets-1], 0, 2);
+    local uint instanceMethodSize = InstanceWriterMethod(s, 0, RSZFile[0].ObjectTable[Header.numRequestSets-1], 0, 2, 0);
     local char newInstanceBytes[instanceMethodSize];
 
     local uint newInstancesInsertPt = RSZOffset+4; // startof(RSZFile.Data.RawData.RSZ[Header.numRequestSets-1]);
@@ -5589,7 +5697,7 @@ void WriteNewShape(struct _GroupInfo &g, string s) {
     if (g.NumShapes)
         shapeInsertPt = g.ShapesTbl + 160 * g.NumShapes; 
 
-    local uint instanceMethodSize = InstanceWriterMethod(s, 0, RSZFile[0].RSZHeader.instanceCount-1, 0, 2);
+    local uint instanceMethodSize = InstanceWriterMethod(s, 0, RSZFile[0].RSZHeader.instanceCount-1, 0, 2, 0);
     local char newInstanceBytes[instanceMethodSize];
     local uint newInstancesInsertPt = RSZOffset+52;
 
