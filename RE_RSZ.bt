@@ -3,7 +3,7 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.7
+//   Version: 0.701
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
@@ -1590,22 +1590,12 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
     }
     
     if (exists(data) && (fieldDataType == "String" || fieldType == String_tid) && find((wstring)data, "/") != -1 
-    && FileNameGetExtension(data) != "" && FileNameGetExtension(data) != ".json") { //&& FileNameGetExtension(data) != ".pfb" && FileNameGetExtension(data) != ".scn"
+    && FileNameGetExtension(data) != "" && FileNameGetExtension(data) != ".json") {
         local wstring fullPath <hidden=true>;
         ReadRSZPath((wstring)data);
-        if (!finished && exists(ResourceInfos.ResourceInfo[0]) && sizeof(data) > 4 && (FindFirst((wstring)data, 0, 0, 0, 0, 0, FTell(), FTell(), 24) == -1)) {
-            h=0; temp=0;
-            while (exists(ResourceInfos.ResourceInfo[h])) {
-                if (exists(ResourceInfos.ResourceInfo[h].pathStr.String) && ResourceInfos.ResourceInfo[h].pathStr.String == data
-                ||  exists(ResourceInfos.ResourceInfo[h].path) && ResourceInfos.ResourceInfo[h].path == data) { 
-                    temp++;
-                    ResourceInfos.ResourceInfo[h].isReferenced = true;
-                    break; 
-                }
-                h++; 
-            }
-            if (temp == 0)
-                SPrintf(ResourceInfos.noResourceInfoOutput, "%s\n%s", ResourceInfos.noResourceInfoOutput, data);
+        if (!finished && FindFirst( (wstring)data ) == startof(data) && exists(parentof(this).name) && parentof(this).name != "via.Folder" //detect filepaths that should be in ResourceInfos
+        && (parentof(this).name != "via.Prefab" || (fieldIndex == 0 && data == 1)) && detectedString(startof(data))) {
+            SPrintf(ResourceInfos.noResourceInfoOutput, "%s\n%s", ResourceInfos.noResourceInfoOutput, data);
         }
     }
     if (FTell() <= startof(this)) {
@@ -2181,7 +2171,7 @@ typedef struct {
                 temp = ( (int)readColorFloat(FTell()+8)<<16 | (int)readColorFloat(FTell()+4)<<8 | (int)readColorFloat(FTell()));
                 SetForeColor(temp); 
                 SetBackColor(temp);
-            } else (!broken ) ? SetForeColor(cGreen) : SetForeColor(cYellow);
+            } else (!broken ) ? SetForeColor(cGreen) : SetForeColor(cYellow); // bed 3045
             
             if (FTell() + 4 <= FileSize() && ReadUInt(FTell()) != 0 && FieldType == Object_tid || FieldType == UserData_tid || FieldType == ukn_type 
             || (FieldType == Data_tid && FieldSize == 4 && FTell() + 4 + (IsList * 4) <= FileSize() && detectedObject(FTell() + (IsList * 4)))) {
@@ -3785,7 +3775,7 @@ else {
                     while(tmp[0] == 0x2A || tmp[0] == 0x20)
                         tmp = StrDel(tmp, 0, 1);
 
-                    if ((!exists(RSZUserDataInfos) || FindFirst(startof(RSZUserDataInfos), classHash) == -1)) { //!elementSz && 
+                    if ((!exists(RSZUserDataInfos) || FindFirst(classHash, 0, 0, 0, 0, 0, startof(RSZUserDataInfos), 0, 24) == -1)) { //!elementSz &&  
                         tempSz = GetFieldSizeAtOffset(Atoi(tmp), FTell());
                         if (tempSz) {
                             InsertBytes(FTell(), tempSz, 0);
@@ -4358,10 +4348,11 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 ubyte PrintList <name="Print list", read=ReadPrintResourceList, write=PrintResourceList>;
             } ResourceInfoWriter <name="ResourceInfo Writer", read=ReadNewResourceInfoMsg, write=WriteNewResourceInfo>; 
             FSkip(-1);
-            local string noResourceInfoOutput <hidden=true>;
+            local string noResourceInfoOutput <hidden=false>;
             if (Header.resourceCount)
                 Resource_Info ResourceInfo[Header.resourceCount] <optimize=false>;
-            if (!Header.resourceCount) ubyte blank <hidden=true>;
+            if (!Header.resourceCount) 
+                ubyte blank <hidden=true>;
 	    } ResourceInfos;
         if (!Header.resourceCount) FSkip(-1);
     }
@@ -5927,5 +5918,5 @@ if (BHVTStart == -1 && headerStringsCount > 0) {
 FSeek(FileSize()); 
 FSkip(-1); 
 BLANK ____; //to quickly get to end of file from template results
-if (exists(ResourceInfos.noResourceInfoOutput) && ResourceInfos.noResourceInfoOutput != "")
+if (exists(ResourceInfos.noResourceInfoOutput) && ResourceInfos.noResourceInfoOutput != "") //
     Printf("\nMissing ResourceInfos:%s\n", ResourceInfos.noResourceInfoOutput);
