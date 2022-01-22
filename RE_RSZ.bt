@@ -3,16 +3,15 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.701
+//   Version: 0.721
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: November 8, 2021
-
+//   History: January 22, 2022
 //------------------------------------------------
 //              Option:                                                            //Effect:
-local string    RSZVersion       <hidden=false>       = "DMC5";                    //change between RE2, RE3, RE8 or DMC5
+local string    RSZVersion       <hidden=false>       = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
 local int       Nesting          <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment    <hidden=true>        = FALSE;                     //Show metadata for each variable
 local int       ShowChildRSZs    <hidden=true>        = FALSE;                     //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
@@ -20,22 +19,21 @@ local int       UseSpacers       <hidden=true>        = TRUE;                   
 local int       AutoDetectGame   <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
 local int       RedetectBHVT     <hidden=true>        = TRUE;                      //Will automatically redetect the next BHVT node if there is a problem 
 local int       HideRawData      <hidden=true>        = FALSE;                     //Hides RawData struct
-local int       HideRawNodes     <hidden=true>        = FALSE;                     //Hides RawNodes struct
+local int       HideRawNodes     <hidden=true>        = TRUE;                      //Hides RawNodes struct
 local int       SortRequestSets  <hidden=true>        = TRUE;                      //Sorts RCOL RequestSets by their IDs
 local int       ExposeUserDatas  <hidden=true>        = TRUE;                      //Makes RSZFiles that contain embedded userDatas start after the Userdatas, for ctrl+J
 local int       SeekByGameObject <hidden=true>        = FALSE;                     //Will automatically seek between detected GameObjects to fix reading errors
 
 //Path to Noesis.exe
-local wstring NoesisPath <hidden=true> =            "C:\\Program Files (x86)\\Noesis\\Noesis.exe";
+local wstring NoesisPath <hidden=true> =            "C:\\Program Files\\noesis\\Noesis.exe";
 
 //Game							                    //Extracted Path
-local wstring DMC5Path <hidden=true> =              "D:\\modmanager\\REtool\\DMC_chunk_000\\natives\\x64\\";
-local wstring RE2Path <hidden=true> =               "D:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
-local wstring RE3Path <hidden=true> =               "D:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
-local wstring RE7Path <hidden=true> =               "D:\\modmanager\\REtool\\RE7_chunk_000\\natives\\x64\\";
-local wstring RE8Path <hidden=true> =               "D:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
-local wstring MHRPath <hidden=true> =               "D:\\modmanager\\REtool\\MHR_chunk_000\\natives\\stm\\";
-
+local wstring DMC5Path <hidden=true> =              "F:\\modmanager\\REtool\\DMC_chunk_000\\natives\\x64\\";
+local wstring RE2Path <hidden=true> =               "F:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
+local wstring RE3Path <hidden=true> =               "F:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
+local wstring RE7Path <hidden=true> =               "F:\\modmanager\\REtool\\RE7_chunk_000\\natives\\x64\\";
+local wstring RE8Path <hidden=true> =               "F:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
+local wstring MHRPath <hidden=true> =               "F:\\modmanager\\REtool\\MHR_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -52,6 +50,8 @@ uint32  GetFieldSize(uint32 classHash, uint32 fieldIndex);
 uint64  GetFieldType(uint32 classHash, uint32 fieldIndex);
 ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
+
+#include "enums.hpp"
 
 //Local variables:
 local int i <hidden=true>, j <hidden=true>, k <hidden=true>, m <hidden=true>, n <hidden=true>, o <hidden=true>, h <hidden=true>, temp <hidden=true>,
@@ -134,68 +134,10 @@ Local_Directory = Lower(Local_Directory);
 local string JsonPath<hidden=true> = Lower(FileNameGetPath(GetTemplateFileName()) + "RSZ" + RSZVersion + ".json"); 
 ParseJson(JsonPath);
 
-//===========================
-//Create your own enums here:
-//They will be added inside the struct for any variable with the name detected by findS()
-void enums() {
-    FSkip(-4);
-    if (fieldName == "GroupName_Role") {
-        enum {
-            role_Normal =  0,
-            role_Idle =  1,
-            role_SitFakeDead =  2,
-            role_LieFakeDead =  3,
-            role_Hypnotized =  4,
-            role_LieHypnotized =  5,
-            role_standingIdle =  6,
-            role_Eating =  7,
-            role_Special =  8,
-            role_BreakDownDoor =  9,
-            role_HangingFakeDead =  10,
-            role_SplitInHalf =  11,
-            role_Dead =  12,
-            role_DeadPosed =  13,
-            role_DeadPosed2 =  14,
-            role_DeadPosed3 =  15,
-        }GroupName_Role;
-    }
-    else if (findS(fieldName, "DamageType") != -1) {
-        enum { 
-            None = -1,
-            Minimum = 0,
-            NormalS = 1,
-            NormalL = 2,
-            NormalLL = 3,
-            Down = 4,
-            DownBound = 5,
-            Slam = 6,
-            SlamBound = 7,
-            Upper = 8,
-            HyperUpper = 9,
-            HyperUpperAir = 10,
-            Blown = 11,
-            Collapse = 12,
-            RollingUpper = 13,
-            CheckSpin = 14,
-            Spin = 15,
-            DiagonalBlown = 16,
-            WindS = 17,
-            WindL = 18,
-            SnatchRelase = 19,
-            StraightBlown = 20,
-            Tremor = 21,
-            Inhale = 22,
-            MotionContinue = 23,
-            Explosion = 24
-        } DamageType;
-    } else
-        FSkip(4);
-}
-
 //============================
 //Special functions & structs:
 LittleEndian();
-if (AutoDetectGame && RSZVersion != "RE7")
+if (RSZOffset > -1 && AutoDetectGame && RSZVersion != "RE7")
     AutoDetectVersion();
 
 void AutoDetectVersion() {
@@ -203,7 +145,8 @@ void AutoDetectVersion() {
     local uint checkedVersions, instanceCount, objectCount, hash, zz, varsChecked;
     local string origVersion = RSZVersion, origExtractedDir = (string)extractedDir, origXFmt = xFmt, origLocal_Directory = Local_Directory, origJsonPath = JsonPath;
     FSeek(RSZOffset);
-    instanceCount = ReadUInt(FTell() + 12), objectCount = ReadUInt(FTell() + 8);
+    if (FTell() + 12 < FileSize())
+        instanceCount = ReadUInt(FTell() + 12), objectCount = ReadUInt(FTell() + 8);
     if (instanceCount) {
         FSeek(ReadUInt(RSZOffset+24) + RSZOffset + 8);
         //if (ReadUInt64() != 0) {
@@ -385,7 +328,8 @@ typedef enum {
     id_StaticExpressionTreeConditions = 10,
     id_Transition = 11,
     id_Paths = 12,
-    id_Tags
+    id_Tags = 13,
+    id_NameHash = 14
 } BHVTlvl;
 
 typedef enum <uint32> {
@@ -528,12 +472,12 @@ typedef struct(int listSize) {
     }
 
 void FixBHVTOffsets(int addedSz, uint insertPoint) {
-    local int tt, vr, nd;
+    local int tt, vr, nd, nv;
     if (exists(Header.treeDataSize))
         Header.treeDataSize += addedSz;
     if (BHVTStart > 0)
         FixOffsets(0, BHVTStart, insertPoint, FileSize()+addedSz, addedSz, 0);
-    FixOffsets(BHVTStart, sizeof(Header), insertPoint - BHVTStart, FileSize()+addedSz, addedSz, 0);
+    FixOffsets(BHVTStart, BHVTStart+sizeof(Header.BHVT), insertPoint - BHVTStart - 8, FileSize()+addedSz, addedSz, 0);
     while(exists(RSZFile[tt])) {
         if (!RSZFile[tt].isEmbeddedUserData)
             FixOffsets(startof(RSZFile[tt]) + addedSz, startof(RSZFile[tt].RSZHeader)+48, insertPoint, FileSize()+addedSz, addedSz, 0);
@@ -553,9 +497,13 @@ void FixBHVTOffsets(int addedSz, uint insertPoint) {
                     while(exists(Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd])) {
                         if (Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].name.strOffset > 0) Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].name.strOffset += addedSz;
                         if (Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].dataOffset > 0) Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].dataOffset += addedSz;
-                        if (exists(Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value) && exists(Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value.hashOffs)
-                        && Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value.hashOffs > 0) {
-                            Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value.hashOffs += addedSz;
+                        nv = 0;
+                        while (exists(Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value[nv])) {
+                            if (exists(Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value[nv].hashOffs)
+                            && Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value[nv].hashOffs > 0) {
+                                Header.BHVT.Uvar[tt].Data.Var[vr].VarData.Node[nd].Value[nv].hashOffs += addedSz;
+                            }
+                            nv++;
                         }
                         nd++;
                     }
@@ -640,7 +588,7 @@ void FixOffsets(uint64 tell, uint64 tellLimit, uint64 insertPoint, int64 maxOffs
         Printf("Cannot fix offsets: insert point %i is before start boundary %i\n", insertPoint, tell);
         return;
     }
-    //Printf("Fixing Offsets greater than %i and less than %i from positions %i to %i:\n\n", insertPoint, maxOffset, tell, tellLimit);
+    Printf("Fixing Offsets greater than %i and less than %i from positions %i to %i:\n\n", insertPoint, maxOffset, tell, tellLimit);
     local uint64 pos = FTell();
     local int64 tmp;
     local int varSize = 8 + -4 * 0;
@@ -653,13 +601,13 @@ void FixOffsets(uint64 tell, uint64 tellLimit, uint64 insertPoint, int64 maxOffs
         else 
             tmp = ReadInt64(FTell());
         if (tmp >= insertPoint && tmp <= maxOffset) {
-            //Printf("@ position %i:  %Li  >= %Li (limit %i) added +%i\n", FTell(), tmp, insertPoint, maxOffset, addedSz);
+            Printf("@ position %i:  %Li  >= %Li (limit %i) added +%i\n", FTell(), tmp, insertPoint, maxOffset, addedSz);
             if (doInt32==1) 
                 tmp = WriteUInt(FTell(), tmp + addedSz);
             else 
                 WriteUInt64(FTell(), tmp + addedSz);
-        } //else //if (tmp && tmp <= maxOffset)
-            //Printf("@ position %i: %Li  >! %Li (limit %i) %i\n",  FTell(), tmp, insertPoint, tellLimit, addedSz);
+        } else //if (tmp && tmp <= maxOffset)
+            Printf("@ position %i: %Li  >! %Li (limit %i) %i\n",  FTell(), tmp, insertPoint, tellLimit, addedSz);
         FSkip(varSize);
     }
 }
@@ -1023,7 +971,7 @@ int detectedGuid(uint tell) {
 int detectedObject(uint tell) {
     if (tell+4 <= FileSize()) {
         local int test = ReadInt(tell);
-        if (test < idx && test > 2 && (test > idx - 100 || exists(userDataPath)))
+        if (test < idx && test > 0 && (test > idx - 100 || exists(userDataPath))) // && test > 2
             return true;
     }
     return false;
@@ -1182,6 +1130,8 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
     local ubyte align <hidden=true> = GetFieldAlignment(classHash, fieldIndex);
     local ubyte isList <hidden=true> = GetFieldArrayState(classHash, fieldIndex);
     local int varIdx <hidden=true> = -1;
+    local string fieldOrgTypeName <hidden=true> = GetFieldOrgTypeName(classHash, fieldIndex);
+    
     if (!finished && ShowAlignment) {
         varIdx = varLen;
         varLen++;
@@ -1446,7 +1396,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                                 if (FTell()+4 <= FileSize()) {
 				                    int ObjectIndex <name="int data (ObjectIndex?)">;
                                     //FSkip(-4); int data <hidden=true>;
-					                if (exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
+					                if (ObjectIndex > 0 && exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex])) {
 						                FSeek(startof(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]));
                                         struct RSZInstance RSZ <size=SizeRSZInstance, open=true>;
                                         checkUseSpacers();
@@ -1541,15 +1491,46 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                     ubyte data[elementSize];
 				break;
 		}
-        if (BHVTStart != -1 && exists(data) && sizeof(data) == 4 && detectedHash(startof(this))) { 
+        if (BHVTStart != -1 && exists(data) && sizeof(data) == 4) { 
+            local uint BHVTStructID = idx;
+            local uint z <hidden=true>, pos <hidden=true> = FTell();
+            local string RSZMagicName = ReadRSZMagicName(RSZFile[lvl]);
+            
             FSeek(startof(data));
-            struct {
-                if (FindFirst(data,1,0,0,0.0,1,RSZOffset,0,24) != startof(data) || FindFirst(data,1,0,0,0.0,1,FTell(),0,24) != -1) {
-                    struct BHVTHash Same_Hash(id_All, "") <open=true>;
-                    checkUseSpacers();
-                }
-            } Same_Hash <name="Same Hashes", size=4>;
+            if (BHVTStructID > 1 && (RSZMagicName == "StaticConditions" || RSZMagicName == "Conditions")) {
+                if (RSZMagicName == "StaticConditions")
+                    BHVTStructID += 1073741824;
+                if (FindFirst(BHVTStructID,1,0,0,0.0,1,0,0,24) != -1)
+                    struct {
+                        local uint ID_offset <hidden=true>;
+                        for (z=0; z<BehaviorTree.NodeCount; z++) {
+                            ID_offset = FindFirst(BHVTStructID,1,0,0,0.0,1,startof(BehaviorTree.RawNodes.Node[z]),sizeof(BehaviorTree.RawNodes.Node[z]),24);
+                            if (ID_offset != -1 && ID_offset % 2 == 0 && (ID_offset > startof(BehaviorTree.RawNodes.Node[z].Priority) || ID_offset < startof(BehaviorTree.RawNodes.Node[z].SelectorID))) {
+                                FSeek(startof(BehaviorTree.RawNodes.Node[z]));
+                                struct BHVTNode Node;
+                            }
+                        }
+                        FSeek(startof(this)+1);
+                    } Referencing_Nodes <size=1>;
+            } else if (detectedHash(startof(data))) {
+                struct {
+                    for (h=0; h<BehaviorTree.NodeCount; h++) {
+                        if (FindFirst(data,1,0,0,0.0,1,startof(BehaviorTree.RawNodes.Node[h]),sizeof(BehaviorTree.RawNodes.Node[h]),24) != -1) {
+                            FSeek(startof(BehaviorTree.RawNodes.Node[h]));
+                            struct BHVTNode Node;
+                        }
+                    }
+                    if (FindFirst(data,1,0,0,0.0,1,RSZOffset,0,24) != startof(data) || FindFirst(data,1,0,0,0.0,1,FTell(),0,24) != -1) {
+                        struct BHVTHash Same_Hash(id_All, "") <open=true>;
+                        checkUseSpacers();
+                    }
+                    FSeek(startof(this)+4);
+                } Same_Hash <name="Same Hashes", size=4>;
+            }
+            FSeek(pos);
         }
+
+
         if (elementSize > 16)
             FSeek(varStart + elementSize);
         else if (elementSize == 4 && exists(data) && startof(data)+4 <= FileSize() && ReadInt(startof(data)) <= 512)
@@ -1557,6 +1538,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         if (!finished) {
             FSkip(-1);
             ubyte FieldNamer <read=ReadVariableNamer, write=WriteVariableName>;
+            local string OriginalType = fieldOrgTypeName;
         }
         if (!finished) {
             lastVarEnd = FTell();
@@ -1577,19 +1559,20 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         } else if (exists(this.Guid) && ReadUInt64(startof(Guid)) != 0) {
             secondTitle = ReadrGUID(Guid);
         } else if (exists(this.RSZ) && this.ObjectIndex > 2) {
-            if (!isList || parentof(this).Count == 1) {
+            if (!isList || (exists(Count) && Count == 1)) {
                 secondTitle = ReadRSZInstance(this.RSZ) + " ";
                 if (secondTitle == " " || secondTitle == "False " || secondTitle == "True " || Atoi(secondTitle) != 0) 
                     secondTitle = "";
-                else secondTitle = StrDel(secondTitle, sizeof(secondTitle)-1, 1);
-            } else if (exists(parentof(this).var[0].RSZ) && parentof(this).Count > 1 && exists(parentof(this).var[parentof(this).Count-2])) {
+                else 
+                    secondTitle = StrDel(secondTitle, sizeof(secondTitle)-1, 1);
+            } else if (exists(parentof(this).var[0].RSZ) && parentof(this).Count > 1 && exists(parentof(this).var[parentof(this).Count-1])) {
                 SPrintf(s, "%s - [%i]", ReadRSZInstanceName(parentof(this).var[0].RSZ), this.ObjectIndex) ;
                 secondTitle = s;
             }
         }
     }
     
-    if (exists(data) && (fieldDataType == "String" || fieldType == String_tid) && find((wstring)data, "/") != -1 
+    if (exists(ResourceInfos) && exists(data) && (fieldDataType == "String" || fieldType == String_tid) && find((wstring)data, "/") != -1 
     && FileNameGetExtension(data) != "" && FileNameGetExtension(data) != ".json") {
         local wstring fullPath <hidden=true>;
         ReadRSZPath((wstring)data);
@@ -1599,7 +1582,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         }
     }
     if (FTell() <= startof(this)) {
-        Printf("Empty field in %s[%i] at %i\n", ReadRSZInstanceName(parentof(this)), parentof(this).idx, startof(this)); 
+        Printf("Empty field %i in %s at %i\n", fieldIndex, ReadRSZInstanceName(parentof(this)), startof(this)); 
         FSeek(startof(this));
     }
 } RSZVariable <optimize=false, name=ReadRSZVariableName, read=ReadRSZVariable, write=WriteRSZVariable, comment=ReadRSZVariableComment>;
@@ -1634,21 +1617,58 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
 
     wstring ReadRSZVariable(RSZVariable &r) {
         local string s;
-        if (exists(r.UserData)) {
-            return ReadRSZMagic(r.UserData);
-        } else if (exists(r.var)) {
-            if (r.Count > 0 && exists(r.var[0].RSZ) && exists(r.var[r.Count-1])) {
-                SPrintf(s, "%s - [%i]", ReadRSZInstanceName(r.var[0].RSZ), r.var[r.Count-1].ObjectIndex); 
+        if (exists(r.var)) {
+            if (r.Count > 1 && exists(r.var[0].RSZ) && exists(r.var[r.Count])) {
+                SPrintf(s, "%s - [%i]", ReadRSZInstanceName(r.var[0].RSZ), r.var[r.Count].ObjectIndex); 
                 return s;
             } 
             return ReadRSZVariable(r.var[0]);
-        } else if (exists(r.RSZ) && r.ObjectIndex > 0) {
-            return ReadRSZInstance(r.RSZ);
         } else 
             switch (r.fieldType) {
+                case ukn_type:
+                case Data_tid:
+                    if (!exists(r.RSZ) && !exists(r.UserData) && exists(r.data)) {
+                        if (r.elementSize == 1 ) { //|| r.fieldOrgTypeName == "Data1A1"
+                            if (r.data == 1) {
+                                s = "True";
+                            } else if (r.data == 0) {
+                                s = "False";
+                            } else 
+                                SPrintf(s, "%i", r.data);
+                        } else if (r.elementSize == 4) {
+                            if (r.data != 0 && detectedFloat(startof(r.data)))
+                                SPrintf(s, "%f", ReadFloat(startof(r.data)));
+                            else if (Abs(r.data) > 1000000) 
+                                SPrintf(s, "%X", ReadInt(startof(r.data)));    
+                            else 
+                                SPrintf(s, "%i", ReadInt(startof(r.data)));
+                        } else if (r.elementSize == 8) {
+                            if (exists(r.data[1]) && (detectedFloat(FTell()) || detectedFloat(FTell()+4)))
+                                SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
+                            else
+                                SPrintf(s, "%Li", r.data);
+                        } else if (r.elementSize == 16) {
+                            if (exists(r.Guid))
+                                s = ReadrGUID(r.Guid);
+                            else if (exists(r.data[3]))
+                                SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
+                        } else if (r.elementSize == 64) {
+                            SPrintf(s, "[%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3], r.data[4], 
+                                r.data[5], r.data[6], r.data[7], r.data[8], r.data[9], r.data[10], r.data[11], r.data[12], r.data[13], r.data[14], r.data[15]);
+                        } else if (detectedFloat(startof(r)))
+                            SPrintf(s, "%f", ReadFloat(startof(r.data)));
+                        else SPrintf(s, "%f", ReadInt(startof(r.data)));
+                        break;  //continue on to Object_tid if struct RSZ exists
+                    }
+                case Object_tid:
                 case UserData_tid:
+                    if (exists(r.RSZ))
+                        return ReadRSZInstance(r.RSZ);
+                    if (exists(r.UserData))
+                        return ReadRSZMagic(r.UserData);
                     if (exists(r.path.String))
-                        s = r.path.String;
+                        return r.path.String;
+                    SPrintf(s, "%Li", ReadInt(startof(r)));
                     break;
                 case Bool_tid:
                     if (exists(r.data))
@@ -1712,37 +1732,6 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
                 case Mat4_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3], r.data[4], r.data[5], r.data[6], r.data[7], r.data[8], r.data[9], r.data[10], r.data[11], r.data[12], r.data[13], r.data[14], r.data[15]);
-                    break;
-                case ukn_type:
-                case Data_tid:
-                    if (exists(r.data) && r.elementSize == 1 ) { //|| r.fieldOrgTypeName == "Data1A1"
-                        if (r.data == 1) {
-                            s = "True";
-                        } else if (r.data == 0) {
-                            s = "False";
-                        } else 
-                            SPrintf(s, "%i", r.data);
-                    } else if (exists(r.data) && r.elementSize == 4) {
-                        if (r.data != 0 && detectedFloat(startof(r.data)))
-                            SPrintf(s, "%f", ReadFloat(startof(r.data)));
-                        else if (Abs(r.data) > 1000000) 
-                            SPrintf(s, "%X", ReadInt(startof(r.data)));    
-                        else 
-                            SPrintf(s, "%i", ReadInt(startof(r.data)));
-                    } else if (exists(r.data) && r.elementSize == 8) {
-                        if (exists(r.data[1]) && (detectedFloat(FTell()) || detectedFloat(FTell()+4)))
-                            SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
-                        else
-                            SPrintf(s, "%Li", r.data);
-                    } else if (r.elementSize == 16) {
-                        if (exists(r.Guid))
-                            s = ReadrGUID(r.Guid);
-                        else if (exists(r.data[3]))
-                            SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
-                    } else if (exists(r.data) && r.elementSize == 64) {
-                        SPrintf(s, "[%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g] [%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3], r.data[4], 
-                            r.data[5], r.data[6], r.data[7], r.data[8], r.data[9], r.data[10], r.data[11], r.data[12], r.data[13], r.data[14], r.data[15]);
-                    }
                     break;
                 default:
                     break;
@@ -2339,7 +2328,8 @@ typedef struct(int64 atAddress, int64 addOffset, byte isAbsolute) {
         } else 
             FSeek(startof(this)+1);
     }
-
+    if (FTell() - startof(this) == 0)
+        Printf("%i\n", startof(parentof(this)));
 } StringRead <open=suppress, read=ReadStringRead, write=WriteStringRead>;
 
     wstring ReadStringRead(StringRead &st) { return st.String; }
@@ -2400,9 +2390,15 @@ typedef struct {
     uint32 type;
     //local wstring hashName <hidden=true>;
     switch (type) {
-        case 6:
-        case 7:  uint32 value; break;
-        case 20: uint64 hashOffs; break;
+        case 6:  //CallbackNode
+            uint32 value; 
+            break;
+        case 7:  //LogicNode
+            uint32 value; 
+            break;
+        case 20: //VariableReferenceNode
+            uint64 hashOffs; 
+            break;
         default:
             if (ReadUInt64(FTell()) > 0 && ReadUInt64(FTell()) <= FileSize()-16 && ReadUInt64(FTell()) > FTell()) {
                 uint64 hashOffs; 
@@ -2413,8 +2409,8 @@ typedef struct {
             }
             break;
     }
-    if (exists(value) && value > 0 && name.String == "CallbackNode")
-        local wstring RSZClass <hidden=true> = GetRSZClassName(Value.value);
+    if (exists(value) && detectedHash(startof(value)))
+        local wstring RSZClass <hidden=true> = GetRSZClassName(value);
     
     if (exists(hashOffs)) {
         FSeek(UVARStart + hashOffs);
@@ -2463,10 +2459,16 @@ typedef struct {
             UVARStart = BHVTStart;
     struct StringRead name(-2, UVARStart, false);
     uint64 dataOffset;
-    
+    FSkip(8);
+    ushort uknCount;
+    ushort valueCount;
+    ushort uknCount;
+    ushort uknCount;
     FSeek(UVARStart + dataOffset);
     if (dataOffset > 0 && dataOffset + UVARStart <= FileSize())
-        UVAR_VALUE Value;
+        for (k=0; k<valueCount; k++) {
+            UVAR_VALUE Value;
+        }
     
     if (exists(Value.value)) {
         if (sizeof(Value.value)==16 && name.String == "VariableReferenceNode") {
@@ -2500,7 +2502,7 @@ typedef struct {
 
     string ReadUVAR_NODENAME (UVAR_NODE &input) { if (exists(input.name.String)) return input.name.String; return ""; }
 
-    string ReadUVAR_NODE (UVAR_NODE &input) { if (exists(input.Value)) return ReadUVAR_VALUE(input.Value); return ""; }
+    string ReadUVAR_NODE (UVAR_NODE &input) { if (exists(input.Value)) return ReadUVAR_VALUE(input.Value[0]); return ""; }
 
 typedef struct {
     ushort ukn, ukn, ukn, ukn, ukn, ukn, ukn, ukn;
@@ -2591,7 +2593,6 @@ typedef struct {
     }
 
 typedef struct {
-    
     struct {
         uint version;
         uint magic;
@@ -2603,48 +2604,49 @@ typedef struct {
         uint UVARhash;
         ushort variableCount;
         ushort embedCount;
-    } Header;
-    if (Header.magic == id_uvar) {
+    } header;
+    local uint variableCount = header.variableCount;
+    if (header.magic == id_uvar) {
         local uint UVARStart <hidden=true> = BHVTStart;
-        if (Header.dataOffset + BHVTStart < startof(this) + 56)
+        if (header.dataOffset + BHVTStart < startof(this) + 56)
             UVARStart = startof(this); 
         
-        if (Header.variableCount && Header.dataOffset+this.UVARStart > startof(this)) { 
+        if (header.variableCount && header.dataOffset+this.UVARStart > startof(this)) { 
             local int furthestExtent <hidden=true>;
-            FSeek(this.UVARStart + Header.dataOffset);
+            FSeek(this.UVARStart + header.dataOffset);
             struct {
-                for (j=0;j<Header.variableCount;j++) 
+                for (j=0;j<header.variableCount;j++) 
                     struct UVARIABLE Var;
             } Data;
         }
-        if (Header.stringsOffset) { 
-            FSeek(this.UVARStart + Header.stringsOffset);
+        if (header.stringsOffset) { 
+            FSeek(this.UVARStart + header.stringsOffset);
             struct {
-                if (Header.variableCount)
-                    WSTRING str[Header.variableCount] <open=suppress>;
+                if (header.variableCount)
+                    WSTRING str[header.variableCount] <open=suppress>;
                 else while (detectedString(FTell()))
                     WSTRING str <open=suppress>;
             } Strings;
         }
-        if (Header.dataOffset + BHVTStart < startof(this) + 56)
+        if (header.dataOffset + BHVTStart < startof(this) + 56)
             this.UVARStart = startof(this); 
         
-        if (Header.variableCount ) { //&& Header.hashInfoOffset+this.UVARStart > startof(this)
-            if (this.UVARStart + Header.hashInfoOffset > FileSize())
+        if (header.variableCount ) { //&& header.hashInfoOffset+this.UVARStart > startof(this)
+            if (this.UVARStart + header.hashInfoOffset > FileSize())
                 this.UVARStart = BHVTStart; 
-            FSeek(this.UVARStart + Header.hashInfoOffset);
+            FSeek(this.UVARStart + header.hashInfoOffset);
             struct {
                 uint64 HashDataOffsets[4];
                 FSeek(parentof(this).UVARStart + HashDataOffsets[0]);
                 struct {
-                    struct rGUID GUIDs[Header.variableCount] <optimize=false>;
+                    struct rGUID GUIDs[header.variableCount] <optimize=false>;
                 } GUIDs;
                 FSeek(parentof(this).UVARStart + HashDataOffsets[1]);
-                uint dataHashMap[Header.variableCount];
+                uint dataHashMap[header.variableCount];
                 FSeek(parentof(this).UVARStart + HashDataOffsets[2]);
-                uint nameHashes[Header.variableCount];
+                uint nameHashes[header.variableCount];
                 FSeek(parentof(this).UVARStart + HashDataOffsets[3]);
-                uint nameHashMap[Header.variableCount];
+                uint nameHashMap[header.variableCount];
             } HashData;
             
             if (FTell() + 4 <= FileSize() && ReadInt() > 0 && ReadInt() < 128 && ReadUInt64(FTell()+4)+this.UVARStart > FTell() && ReadUInt64(FTell()+4)+this.UVARStart < FileSize())
@@ -2658,7 +2660,7 @@ typedef struct {
                     FSeek(startof(embedOffsets)+embedCount*8);
                 } EmbeddedUVARs;            
         }
-        if (Header.variableCount == 0) {
+        if (header.variableCount == 0) {
             FSeek(getAlignedOffset(FTell(),16));
             struct {
                 uint64 NextOffset, NextOffset, NextOffset, NextOffset;
@@ -2832,11 +2834,12 @@ typedef struct {
     ubyte dummy <hidden=true>;
     local string String_Form = "";
     local int Hash_Form;
+    local uint Hash_Form_unsigned;
 } HashGenerator <read=ReadStringToHash, write=WriteStringToHash>;
     
     string ReadStringToHash(HashGenerator &h) { 
         if (h.Hash_Form )  {
-            local string ss; SPrintf(ss, "%i = %s", h.Hash_Form, h.String_Form);
+            local string ss; SPrintf(ss, "%i (%u) = %s", h.Hash_Form, h.Hash_Form_unsigned, h.String_Form);
             return ss;
         } return "      [Input a String here to turn it into a Murmur3 Hash]"; 
     }
@@ -2844,6 +2847,7 @@ typedef struct {
     void WriteStringToHash(HashGenerator &h, string s) {
         h.String_Form = s;
         h.Hash_Form = hash_wide(h.String_Form);
+        h.Hash_Form_unsigned = hash_wide(h.String_Form);
     }
 
     string readRCOLWarning (uint &u) { 
@@ -3196,7 +3200,7 @@ else {
             struct BHVTHash mStartTransitionEvent(id_All, "");          
             FSkip(4 * TransitionCount.Count - 4);
         }
-        if (detectedHash(FTell())) 
+        if (detectedHash(FTell()) && ReadUByte(FTell()+2) != 0) 
             struct BHVTHash mStartState(id_All, "");
         else
             struct BHVTId mStartState(id_All, "", 0);
@@ -3261,7 +3265,7 @@ else {
                     local ubyte isEnd <hidden=true>, isBranch <hidden=true>;
                     struct BHVTHash ID(id_All, ""); 
                     struct BHVTHash exID(id_All, "");
-                    StringRead Name(-1, 4+startof(Header.BHVT)+Header.BHVT.stringOffset, -1);
+                    StringRead Name(-1, 4+BHVTStart+Header.BHVT.stringOffset, -1); //startof(Header.BHVT)
                     if (!exists(ID) || ID.hash != ReadInt())
                         struct BHVTHash Parent(id_All, "");
                     else 
@@ -3352,8 +3356,8 @@ else {
                                     WorkFlags_IsAsRestartable = 0x800,
                                 } WorkFlags;
 
-                                int mNameHash <format=hex>;
-                                int mFullnameHash <format=hex>;
+                                struct BHVTHash mNameHash(id_NameHash, "") <format=hex>;
+                                struct BHVTHash mFullnameHash(id_NameHash, "") <format=hex>;
                             } else int mNodeAttribute;
                         } Node_Attributes;
                         
@@ -3488,7 +3492,8 @@ else {
                                 Printf("Redetected BHVT Node from %u to %u\n",  startof(blank), FTell()); 
                             }
                         }
-                        NodeCounter++;
+                        if (exists(NodeCounter))
+                            NodeCounter++;
                     }
                 } BHVTNode <name=ReadBHVTNodeName, read=ReadBHVTNode, optimize=false, open=suppress>;
                 
@@ -3520,7 +3525,8 @@ else {
                 if (StaticActionsObjectTableCount && StaticActionsObjectTableCount * 4 + FTell() < FileSize()) 
                     struct { uint zeroes2[StaticActionsObjectTableCount]; } StaticActionsObjectTable;
             } zeroes;
-            
+            if (HideRawNodes) 
+                FSeek(startof(this)+1);
         } BehaviorTree;
     }
 
@@ -3686,7 +3692,7 @@ else {
             StringRead pathStr(FTell(), 0, 1); 
         else
             StringRead pathStr(-1, 0, 0);
-        local byte isReferenced;
+        //local byte isReferenced;
     } Resource_Info <name=ReadResourceInfoName, read=ReadResourceInfo, write=WriteResourceInfo>;
     
         string ReadResourceInfo(Resource_Info &r) { return r.pathStr.String; }
@@ -3732,6 +3738,7 @@ else {
         }
         
         void FixObjects(int lvl, int greaterThan, int addAmt, byte dontChangeUserDatas) {
+            Printf("Add amt: %i\n", addAmt);
             local int ix, sh;
             while(exists(RSZFile[lvl].Data.RawData.RSZ[ix])) {
                 CheckInstance(RSZFile[lvl].Data.RawData.RSZ[ix], greaterThan, addAmt, dontChangeUserDatas);
@@ -3891,13 +3898,12 @@ else {
             AddBookmark(GetCursorPos()-1, "RSZ_Data_InsertPt", "ubyte", -1, cNone, cPurple, 0);
         }
 
-        void WriteRandomGUID (uint tell) {
-            local ubyte j;
-            for (j=0; j<16; j++)
-                WriteUByte(tell+j, Random(255));
-        }
+        void WriteRandomHash (uint tell) { local ubyte j; for (j=0; j<4; j++) WriteUByte(tell+j, Random(255)); }
+
+        void WriteRandomGUID (uint tell) { local ubyte j; for (j=0; j<16; j++) WriteUByte(tell+j, Random(255)); }
 
         int calculatePaddingAtPoint(uint newEnd, uint oldEnd, ubyte alignment, ubyte method) {
+            Printf("newEnd: %i oldEnd %i\n", newEnd, oldEnd);
             local int padding, existingPadding;
             if (method == 0)
                 while ((oldEnd+existingPadding) % 16 != alignment)
@@ -3905,10 +3911,10 @@ else {
             else if (method == 1)
                 while (ReadByte(oldEnd+existingPadding) == 0) 
                     existingPadding++;
-            //Printf("existingPadding: %i\n", existingPadding);
+            Printf("existingPadding: %i\n", existingPadding);
             while((newEnd+padding) % 16 != (oldEnd+existingPadding) % 16 )
                 padding++;
-            //Printf("minus Padding: %i\n", padding);
+            Printf("minus Padding: %i\n", padding);
             padding -= existingPadding;
             return padding;
         }
@@ -3997,7 +4003,7 @@ else {
                     existingPadding++;
                 while((padPt + sizeToAdd + padBytes ) % 16 != (padPt) % 16)
                     padBytes++;
-                if (existingPadding + padBytes > 16)
+                if (existingPadding + padBytes >= 16)
                     padBytes -= 16;
                 sizeToAdd += padBytes;
             }
@@ -4005,7 +4011,9 @@ else {
             //calculate new Data Size, insert data and fix alignment
             local uint endPadPt;
             local int endPadding;
-            local uint newDataInsertPt = startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]);
+            local uint newDataInsertPt = startof(RSZFile[lvl].Data.RawData) + sizeof(RSZFile[lvl].Data.RawData);
+            if (exists(RSZFile[lvl].Data.RawData.RSZ[insertIndex]))
+                newDataInsertPt = startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]) + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex]);
             if (structType == 4 || insertIndex < RSZFile[lvl].RSZHeader.instanceCount-1 || (exists(BehaviorTree) || exists(RequestSets))) { //  && lvl > 0 
                 if (structType == 4) { //Counts
                     //local string ss; 
@@ -4348,7 +4356,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 ubyte PrintList <name="Print list", read=ReadPrintResourceList, write=PrintResourceList>;
             } ResourceInfoWriter <name="ResourceInfo Writer", read=ReadNewResourceInfoMsg, write=WriteNewResourceInfo>; 
             FSkip(-1);
-            local string noResourceInfoOutput <hidden=false>;
+            local string noResourceInfoOutput <hidden=true>;
             if (Header.resourceCount)
                 Resource_Info ResourceInfo[Header.resourceCount] <optimize=false>;
             if (!Header.resourceCount) 
@@ -4442,7 +4450,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     }
     
     void HeaderStringWriterMethod(wstring s, ubyte structType, uint lvl) {
-        local int padBytes, existingPadding, findFirst;
+        local int padBytes, findFirst;
         local ubyte isEmbedded = (structType == 3 && (RSZVersion == "RE2" || RSZVersion == "DMC5"));
         local uint oldInstanceCt = RSZFile[lvl].RSZHeader.instanceCount;
         if (exists(RSZFile[lvl].RSZHeader.userdataCount))
@@ -4472,13 +4480,14 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             }
         }
         
-        if (RSZVersion == "RE7" || (Header.magic == id_PFB && (RSZVersion == "RE2" || RSZVersion == "DMC5"))) {
+        if (structType != 3 && (RSZVersion == "RE7" || (Header.magic == id_PFB && (RSZVersion == "RE2" || RSZVersion == "DMC5")))) {
             insertPt = headerStrings[headerStringsCount];
             padBytes = calculatePaddingAtPoint(insertPt + stringSizeToAdd, insertPt, insertPt % 16, 1);
             if (padBytes > 0)
                 InsertBytes(insertPt, padBytes, 0);
             if (padBytes < 0)
                 DeleteBytes(insertPt, -padBytes);
+            
             FixOffsets(0, startof(GameObjectInfos), insertPt, FileSize()+stringSizeToAdd+padBytes, stringSizeToAdd+padBytes, 0);
             InsertBytes(insertPt, stringSizeToAdd, 0);
             WriteWString(insertPt, s);
@@ -4488,7 +4497,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     WriteShort(FTell(), 0);
                 FSkip(2);
             }
-        } else { // if (structType != 0 || exists(ResourceInfos.ResourceInfo.pathStr.strOffset) )
+        } else {
             local uint sizeToAdd = 8;
             if (structType == 0) { // ResourceInfo
                 insertPt = startof(ResourceInfos) + sizeof(ResourceInfos) - (Header.resourceCount == 0); 
@@ -4503,6 +4512,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             } 
             
             if (structType == 3) {
+                
                 if (!isEmbedded && RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.RSZUserDataInfoPath == "") {
                     Printf("ERROR: No filepath to write, aborting...\n");
                     return;
@@ -4537,7 +4547,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             
             sizeToAdd *= ctr;
             local uint clipboardBytes;
-
+            local uint userDataInsertPt;
             if (isEmbedded) {
                 sizeToAdd = 24;
                 stringSizeToAdd = 0;
@@ -4550,11 +4560,16 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     sizeToAdd += clipboardBytes;
                 }
             } else {
+                if (structType == 3)
+                    sizeToAdd = 16;
                 padBytes = calculatePaddingAtPoint(stringInsertPt + stringSizeToAdd + sizeToAdd, stringInsertPt, stringInsertPt % 16, 1);
                 stringSizeToAdd += padBytes;
             }
-            
-            Printf("E %i %i %i %i %i\n%i %i %i %i\n", insertPt, stringInsertPt, sizeToAdd, padBytes, existingPadding, startBound, endBound, stringSizeToAdd, ctr); 
+
+            userDataInsertPt = startof(RSZFile[lvl].Data) + sizeToAdd - clipboardBytes + stringSizeToAdd;//getAlignedOffset(insertPt + 24, 16) - startof(RSZFile[lvl].RSZHeader
+
+            Printf("HeaderStringWriterMethod: %i %i %i %i %i %i %i %i\n", insertPt, stringInsertPt, sizeToAdd, padBytes, 
+                startBound, endBound, stringSizeToAdd, ctr); 
             
             if (structType == 3) {
                 if (!isEmbedded) {
@@ -4565,8 +4580,10 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     if (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1) {
                         RSZFile[lvl].RSZHeader.dataOffset += sizeToAdd;
                         FixRSZUserDataOffsets(insertPt, 0, sizeToAdd, lvl);
-                    } else
-                        FixRSZUserDataOffsets(insertPt, sizeToAdd, 0, lvl);
+                    } else {
+                        FixRSZUserDataOffsets(insertPt, 24 + padBytes, 0, lvl);
+                        FixRSZUserDataOffsets(userDataInsertPt, clipboardBytes, 0, lvl);
+                    }
                 }
             } else { //regular header strings:
                 FixOffsets(0, sizeof(Header), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
@@ -4578,7 +4595,8 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             if (structType == 3 && Abs(Atoi(StrDel(s, 0, 1))) > 10000) {
                 RSZFile[lvl].RSZHeader.userdataCount += 1;
                 silenceMessages = TRUE;
-                addedSzRecord = InstanceWriterMethod((string)s, lvl, RSZFile[lvl].RSZHeader.instanceCount-1, 0, false, 0);
+                if (ctr > 0)
+                    addedSzRecord = InstanceWriterMethod((string)s, lvl, RSZFile[lvl].RSZHeader.instanceCount-1, 0, false, 0);
                 if (exists(UserDataInfos.UserDataInfoWriter) && MessageBox(idYes | idNo, "Insert Data", "Do you want to insert a matching UserDataInfo in the file header?") == idYes) {
                     secAddedSzRecord = FileSize();
                     WriteNewUserDataInfo(UserDataInfos.UserDataInfoWriter, pathString);
@@ -4596,9 +4614,9 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             
             if (stringSizeToAdd > 0) { 
                 local ushort sizeWStr;
-                InsertBytes(stringInsertPt, stringSizeToAdd, 0);
+                InsertBytes(stringInsertPt + secAddedSzRecord, stringSizeToAdd, 0);
                 if (structType == 3 && !isEmbedded) {
-                    WriteWString(stringInsertPt, pathString);
+                    WriteWString(stringInsertPt + secAddedSzRecord, pathString);
                 } else if (ctr == 1) {
                     WriteWString(stringInsertPt, s);
                 } else for (h=0; h<ctr; h++) {
@@ -4610,17 +4628,17 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             }
             
             if (sizeToAdd > 0)
-                InsertBytes(insertPt, sizeToAdd - clipboardBytes, 0);
+                InsertBytes(insertPt + secAddedSzRecord, sizeToAdd - clipboardBytes, 0);
             
             //return;
             if (structType == 3) {
-                WriteInt(insertPt, uidx); 
-                WriteInt(insertPt+4, Atoi(StrDel(s,0,1)));
+                WriteInt(insertPt + secAddedSzRecord, uidx); 
+                WriteInt(insertPt+4 + secAddedSzRecord, Atoi(StrDel(s,0,1)));
                 if (isEmbedded) {
                     Printf("Hash of %s is %i\n", pathString, hash_wide((string)pathString));
                     WriteInt(insertPt + 8, hash_wide((string)pathString));
                     if (useClipboard) {
-                        local uint userDataInsertPt = startof(RSZFile[lvl].Data) + sizeToAdd - clipboardBytes + stringSizeToAdd;//getAlignedOffset(insertPt + 24, 16) - startof(RSZFile[lvl].RSZHeader
+                        
                         WriteInt64(insertPt + 16, userDataInsertPt - startof(RSZFile[lvl].RSZHeader)+addedSzRecord);
                         Printf("Pasted %i bytes to position %i\n", RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.BufferSize, userDataInsertPt);
                         InsertBytes(userDataInsertPt, clipboardBytes, 0);
@@ -4629,13 +4647,14 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                     } else {
                         while(FileSize()%16 != 0) 
                             InsertBytes(FileSize(), 1, 0);
-                        WriteInt64(insertPt + 16, startof(RSZFile[0].Data) - startof(RSZFile[lvl].RSZHeader));
+                        WriteInt64(insertPt + 16 + secAddedSzRecord, startof(RSZFile[0].Data) - startof(RSZFile[lvl].RSZHeader) + secAddedSzRecord);
                         SetCursorPos(FileSize());
                         addInsertBookmark();
                     }
                 } else {
-                    WriteInt64(insertPt + 8, stringInsertPt + sizeToAdd - (startof(RSZFile[lvl].RSZHeader) + addedSzRecord - (addedSzRecord - secAddedSzRecord)));
+                    WriteInt64(insertPt + 8 + secAddedSzRecord, stringInsertPt + sizeToAdd + secAddedSzRecord - (startof(RSZFile[lvl].RSZHeader) + addedSzRecord + secAddedSzRecord));
                 }
+
                 if (addedSzRecord > 0) {
                     InsertBytes(FindFirst("RSZ")+4, addedSzRecord, 0);
                     WriteBytes(buffer, FindFirst("RSZ")+4, addedSzRecord);
@@ -4673,11 +4692,11 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     void WriteNewUserDataInfo(ubyte &u, wstring s) {  HeaderStringWriterMethod(s, 2, 0);  }
 
     void WriteNewRSZUserDataInfo(struct _RSZUserDataInfoWriter &r, wstring s) { 
+        //s = " 550357568_1965550144 assets:/ObjectRoot/Prefab/Shell/Generator/Entity/Bullet/wp0000/BulletDefaultGeneratorUserData_wp0000.user.json";
         if (find(s, "/") != -1) {
             r.RSZUserDataInfoPath = SubStr(s, find(StrDel(s,0,1), " ")+2, -1);
             s = SubStr(s, 0, find(StrDel(s,0,1), " ")+1);
         }
-        
         HeaderStringWriterMethod(s, 3, parentof(parentof(r)).lvl); 
     }
     
@@ -4727,9 +4746,11 @@ typedef struct {
     }
     
     string ReadRSZUserDataInfo(RSZUserDataInfo &u) {  
-        local ushort lvl = getLevelRSZ(u.RSZOffset_Absolute.OffsetAbs);
-        if (exists(u.JsonPathHash) && exists(RSZFile[lvl]))
-            return ReadRSZMagicName(RSZFile[lvl]);
+        if (exists(u.RSZOffset_Absolute)) {
+            local ushort lvl = getLevelRSZ(u.RSZOffset_Absolute.OffsetAbs);
+            if (exists(u.JsonPathHash) && exists(RSZFile[lvl]))
+                return ReadRSZMagicName(RSZFile[lvl]);
+        }
         return u.path.String; 
     }
 
@@ -4855,8 +4876,8 @@ typedef struct(ubyte isFolder)
     
     checkUseSpacers();
     
-    if (startof(this) > FTell())
-        FSeek(startof(this) + sizeof(RSZ[0]));
+    if (startof(this) >= FTell())
+        FSeek(startof(RSZ) + sizeof(RSZ));
 } GameObject <name=ReadGameObjectName, read=ReadGameObject, write=WriteGameObject>;
 
     wstring ReadGameObjectName(GameObject &g) { return ReadRSZInstanceName(g.RSZ[0]); }
@@ -4970,6 +4991,9 @@ typedef struct {
     else 
         INSTANCEINFO InstanceInfos;
     
+    if (FileSize() == 128) //empty file
+        return;
+
     if ((exists(RSZHeader.userdataOffset) && RSZHeader.userdataCount > 0) || (RSZVersion != "RE7" && BHVTStart == -1)) {
 	    FSeek(startof(RSZHeader) + RSZHeader.userdataOffset);
         typedef struct {
@@ -4986,7 +5010,7 @@ typedef struct {
             }
         } RSZUSERDATAINFOS <name="RSZUserDataInfos">;
         
-        if (!ShowChildRSZs && (exists(parentof(this)) && !exists(offset)))
+        if (!FEof() && !ShowChildRSZs && (exists(parentof(this)) && !exists(offset)))
             struct RSZUSERDATAINFOS RSZUserDataInfos <hidden=true>;
         else 
             struct RSZUSERDATAINFOS RSZUserDataInfos;
@@ -5244,8 +5268,8 @@ int getBHVTLevel(BHVTlvl lv) {
     return ret;
 }
 
-typedef struct {
-    local uint uv <hidden=true>, vr <hidden=true>, fd <hidden=true>, result <hidden=true>, n <hidden=true>;;
+typedef struct (string uuid) {
+    local uint uv <hidden=true>, vr <hidden=true>, fd <hidden=true>, result <hidden=true>, n <hidden=true>;
     local string Guid <hidden=true> = parentof(this).Guid;
     while(exists(GameObjectInfos.GameObjectInfo[n])) {
         if (TranslateGUID(GameObjectInfos.GameObjectInfo[n].Guid.uuid) == Guid) {
@@ -5257,10 +5281,12 @@ typedef struct {
         n++;
     }
     local uint RSZIdx <hidden=true>;
+
     if (exists(Header.BHVT.Uvar)) {
         local uint vd <hidden=true>;
         while (exists(Header.BHVT.Uvar[uv])) {
-            for (i=0; i<Header.BHVT.Uvar[uv].Header.variableCount; i++) {
+            //Printf("%i\n",uv);
+            for (i=0; i<Header.BHVT.Uvar[uv].variableCount; i++) {
                 if (exists(Header.BHVT.Uvar[uv].Data.Var[i].VarData)) {
                     for (vd=0; vd<Header.BHVT.Uvar[uv].Data.Var[i].VarData.propCount; vd++) {
                         if (exists(Header.BHVT.Uvar[uv].Data.Var[i].VarData.Node[vd].Value.value.uuid) 
@@ -5273,8 +5299,9 @@ typedef struct {
             }
             uv++;
         }
+        uv=0;
         while (exists(Header.BHVT.Uvar[uv])) {
-            for (i=0; i<Header.BHVT.Uvar[uv].Header.variableCount; i++) {
+            for (i=0; i<Header.BHVT.Uvar[uv].header.variableCount; i++) {
                 if (TranslateGUID(Header.BHVT.Uvar[uv].HashData.GUIDs.GUIDs[i].uuid) == Guid) {
                     FSeek(startof(Header.BHVT.Uvar[uv].Data.Var[Header.BHVT.Uvar[uv].HashData.dataHashMap[i]]));
                     struct UVARIABLE Uvariable <open=true>;
@@ -5374,7 +5401,7 @@ typedef struct(BHVTlvl lv, string Name, ubyte isList) {
         if (idType == 64 && Type == id_Conditions)
             Type = id_StaticConditions;
         
-        if (finished && (id > 0 || (id == 0 && idType == 64))) {
+        if (finished && (id > -1 || (id == 0 && idType == 64))) {
             local short lvl <hidden=true> = getBHVTLevel(Type);
 
             if (lvl > -1 && exists(RSZFile[lvl].ObjectTable[id]) && exists(RSZFile[lvl].Data.RawData.RSZ[RSZFile[lvl].ObjectTable[id]])) { //
@@ -5382,14 +5409,14 @@ typedef struct(BHVTlvl lv, string Name, ubyte isList) {
                 local ushort RSZIdx <hidden=true> = (uint)RSZFile[lvl].ObjectTable[id];
                 struct RSZInstance RSZ <open=true>;  //
                 local int vr <hidden=true>, uv <hidden=true>;
-                while (exists(RSZ.var[vr])) {
-                    if (exists(RSZ.var[vr].Guid.uuid) && ReadUInt(startof(RSZ.var[vr].Guid)) != 0) {
+                while (exists(this.RSZ.var[vr])) {
+                    if (exists(this.RSZ.var[vr].Guid.uuid) && ReadUInt(startof(this.RSZ.var[vr].Guid)) != 0) {
                         break;
                     } vr++;
                 }
-                if (exists(RSZ.var[vr].Guid.uuid) && ReadUInt(startof(RSZ.var[vr].Guid.uuid))) {
-                    local string Guid <hidden=true>  = TranslateGUID(RSZ.var[vr].Guid.uuid);
-                    struct SAMEGUIDS SameGUIDs <name="Same GUID", open=true>;
+                if (exists(this.RSZ.var[vr].Guid.uuid) && ReadUInt(startof(this.RSZ.var[vr].Guid.uuid))) {
+                    local string Guid <hidden=true>  = TranslateGUID(this.RSZ.var[vr].Guid.uuid);
+                    struct SAMEGUIDS SameGUIDs(Guid) <name="Same GUID", open=true>;
                     checkUseSpacers();
                 }
             } else if (exists(Header.TransitionMap[id])) {
@@ -5401,6 +5428,7 @@ typedef struct(BHVTlvl lv, string Name, ubyte isList) {
         }
     }
 } BHVTId <open=suppress, optimize=false, name=ReadBHVTIdName, read=ReadBHVTId, write=WriteBHVTId>;
+
 
     wstring ReadBHVTId(BHVTId &i) { 
         string s;
@@ -5446,6 +5474,17 @@ typedef struct(BHVTlvl lv, string Name) {
                     }
                     m++;
                 }
+            }
+        } else if (Type == id_NameHash) {// && exists(Header.BHVT.Uvar)
+            local uint uv <hidden=true>;
+            while (exists(Header.BHVT.Uvar[uv])) {
+                for (i=0; i<Header.BHVT.Uvar[uv].variableCount; i++) {
+                    if (Header.BHVT.Uvar[uv].Data.Var[i].nameHash == hash) {
+                        FSeek(startof(Header.BHVT.Uvar[uv].Data.Var[i]));
+                        struct UVARIABLE Uvariable;
+                    }
+                }
+                uv++;
             }
         } else if (detectedHash(startof(hash))) {
             local int kk <hidden=true>, tg <hidden=true>, valueStart <hidden=true>, doExit <hidden=true>;
@@ -5537,7 +5576,11 @@ typedef struct(BHVTlvl lv, string Name) {
         return ""; 
     }
     
-    void WriteBHVTHash(BHVTHash &h, string s) { local uint out = Atoi(s); WriteUInt(startof(h.hash), out); } 
+    void WriteBHVTHash(BHVTHash &h, string s) { 
+        if (s == "h")
+            WriteRandomHash(startof(h.hash));
+        local uint out = Atoi(s); WriteUInt(startof(h.hash), out); 
+    } 
 
     //wstring ReadBHVTHashName(BHVTHash &h) { if (exists(h.RSZ)) return h.RSZ.name; return ""; } 
 
@@ -5554,38 +5597,39 @@ typedef struct(BHVTlvl lv, string Name) {
 
 
 //Start of RSZ Data =====================
-FSeek(RSZOffset);
-if (ReadUInt(0) == id_PFB || ReadUInt(0) == id_SCN) // SCN or PFB
-    { FSkip(-1); BLANK __; FSkip(-1); BLANK ___ <name=ReadMainDataNotice>; }
-while (FTell()+4 <= FileSize()) {
-    if ( ReadUInt(FTell()) == 5919570 ) { //RSZ
-        finished = false;
-        if (level == 1 && !FEof()) { 
-            if (Header.magic == id_PFB || Header.magic == id_SCN) {
-                FSkip(-1); BLANK blank; 
-                FSkip(-1); BLANK userDataNotice <name=ReadUserDataNotice>; 
+if (RSZOffset > -1) {
+    FSeek(RSZOffset);
+    if (ReadUInt(0) == id_PFB || ReadUInt(0) == id_SCN) // SCN or PFB
+        { FSkip(-1); BLANK __; FSkip(-1); BLANK ___ <name=ReadMainDataNotice>; }
+    while (FTell()+4 <= FileSize()) {
+        if ( ReadUInt(FTell()) == 5919570 ) { //RSZ
+            finished = false;
+            if (level == 1 && !FEof()) { 
+                if (Header.magic == id_PFB || Header.magic == id_SCN) {
+                    FSkip(-1); BLANK blank; 
+                    FSkip(-1); BLANK userDataNotice <name=ReadUserDataNotice>; 
+                }
             }
-        }
-        if (ReadUInt(FTell()+8) == 0)
-            struct RSZMagic RSZFile <hidden=true>;
-        else {
-            //start at struct Data if there are embedded userdatas:
-            if (ExposeUserDatas && ReadInt(FTell()+16) && (exists(GameObjectInfos.GameObjectInfo) || exists(BehaviorTree)) && (RSZVersion == "DMC5" || RSZVersion == "RE2")) { //has UserDatas
-                realStart = FTell();
-                FSeek(ReadUInt(realStart+32) + realStart);
-                struct RSZMagic RSZFile;
-            } else 
-                struct RSZMagic RSZFile;
-        }
-        level++;
-        FSeek(startof(RSZFile.RSZHeader) + 4);
-    } else 
-        FSkip(1);
+            if (ReadUInt(FTell()+8) == 0)
+                struct RSZMagic RSZFile <hidden=true>;
+            else {
+                //start at struct Data if there are embedded userdatas:
+                if (ExposeUserDatas && ReadInt(FTell()+16) && (exists(GameObjectInfos.GameObjectInfo) || exists(BehaviorTree)) && (RSZVersion == "DMC5" || RSZVersion == "RE2")) { //has UserDatas
+                    realStart = FTell();
+                    FSeek(ReadUInt(realStart+32) + realStart);
+                    struct RSZMagic RSZFile;
+                } else 
+                    struct RSZMagic RSZFile;
+            }
+            level++;
+            FSeek(startof(RSZFile.RSZHeader) + 4);
+        } else 
+            FSkip(1);
+    }
 }
-
 finished = true;
 
-if (!exists(Header)) { //detect strings in motbank etc files:
+if (exists(Header.skip)) { //detect strings in motbank etc files:
     FSeek(0);
     HashGenerator HashMaker <name="Hash Generator">;
     FSkip(-1);

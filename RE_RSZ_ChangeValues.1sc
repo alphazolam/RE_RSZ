@@ -3,24 +3,40 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.36
+//   Version: 0.361 
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: Nov 4 2021
+//   History: January 22, 2021
 //------------------------------------------------
 
 
 //Options:
-local int inputValue = TRUE; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = 0; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
 
 void runScripts() 
 {
     //Set up automatic scripting here:
-    //You can use "objectNameToFind" to only change ones that are referenced with specific Object names
+    //You can set "objectNameToFind" to only change ones that are referenced with specific Object names. Unset it after using the runScript() for it.
     //Various examples below. 
+    
+    //runScript("Cone", "", "", "*0.45");
+    //runScript("ShadowBias", "", "", "0.00065");
+    //runScript("BlackBodyRadiation", "", "", "1");
+    //runScript("Intensity", "", "", "*0.23");
+    //runScript("Radius", "", "", "*1.25");
+    //runScript("ShadowFlag", "", "", "3");
+    //runScript("UniformShadowEnable", "", "", "1");
+    //runScript("IsAttackPermit", "app.enemy.CheckStateBase", "", "0");
+    //runScript("_LimitedNearDistance", "", "", "0.1");
+    //runScript("_LimitedUpperFigureAngle", "", "", "1");
+    //runScript("_LimitedLowerFigureAngle", "", "", "1");
+
+    //runScript("HasDefaultItemData", "", "", "0");
+    //runScript("_isUniqueItemBox", "", "", "1");
     //runScript("ObjectIndex", "", "", "+1154");
     //runScript("UpdateSelf", "", "", "0");
+    //runScript("DrawSelf", "", "", "0");
     //runScript("v0", "via.render.Mesh", "", "0");
     //runScript("STRUCT_AIMapEdgeCreate__HasValue", "", "", "0");
     //runScript("STRUCT_AIMapEdgeCreate__Value", "", "", "0");
@@ -172,6 +188,12 @@ int isParentObjectNamed(RSZInstance &r, string nameToTest) {
     return false;
 }
 
+int checkForObjectIndex(RSZVariable &v) {
+    if (fieldToChange == "ObjectIndex" && v.fieldType != UserData_tid)
+        return (exists(v.ObjectIndex) || (exists(v.var) && exists(v.var.ObjectIndex)));
+    return false;
+}
+
 void runScript(string fldToChange, string instToChange, string srchValue, wstring chngValue) {
     fieldToChange = fldToChange;
     instanceToChange = instToChange;
@@ -211,12 +233,13 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
             while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize())) ) {
-                    if ((RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  
-					|| (fieldToChange == "ObjectIndex" && (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) 
-					|| (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var) && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var.ObjectIndex)))
-                    && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldType != UserData_tid)
+                    if (checkForObjectIndex(RSZFile[lv].Data.RawData.RSZ[r].var[v]) || ((RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  
                     && (instanceToChange == "" || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
-                    || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title))) ) {
+                    || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)))) ) {
+
+                    //|| (fieldToChange == "ObjectIndex" && (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].ObjectIndex) 
+					//|| (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var) && exists(RSZFile[lv].Data.RawData.RSZ[r].var[v].var.ObjectIndex)))
+                    //&& RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldType != UserData_tid)
                     //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name), (wstring)instanceToChange) != -1
                     //|| find(Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title), (wstring)searchValue)     != -1 )    ) {
                         if (objectNameToFind != "" && RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange 
@@ -240,6 +263,8 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
         if (GetSelSize() && startof(RSZFile[lv]) >= GetSelStart() && startof(RSZFile[lv])+sizeof(RSZFile[lv]) > GetSelStart()+GetSelSize())
             break;
     }
+
+
     multiply = FALSE;
     divide = FALSE;
     add = FALSE;
@@ -271,4 +296,3 @@ if (inputValue) {
 }
 WriteUByte(0, ReadUByte(0)); //allows Undo
 //FileSave();
-//via render mesh v11 = mirror animations
