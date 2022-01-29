@@ -19,7 +19,7 @@ void enums()  {
             role_DeadPosed =  13,
             role_DeadPosed2 =  14,
             role_DeadPosed3 =  15,
-        }GroupName_Role;
+        } GroupName_Role;
     }
     else if (findS(fieldName, "DamageType") != -1) {
         enum { 
@@ -52,9 +52,45 @@ void enums()  {
         } DamageType;
     } 
     else {
-        switch (fieldOrgTypeName) { //Input Enums by their OriginalType (as seen in RawData) Here:
-            case "":
+        local string enumName = fieldOrgTypeName;
+        if (fieldName == "__value")
+            enumName = parentof(this).name;
+        switch (enumName) { //Input Enums by their OriginalType (as seen in RawData) Here:
+            case "app.PlayerVergilPL.ActiveAction":
+	            enum app_PlayerVergilPL_ActiveAction {
+		            Base = 0,
+		            Yamato = 1,
+		            Beowulf = 2,
+		            Forceedge = 3,
+		            TrickAction = 4,
+		            Devil = 5,
+		            TheDevil = 6,
+		            Provoke = 7,
+	            } Enum;
+	            break;
+            case "via.motion.JointInfo.Type":
+                enum via_motion_JointInfo_Type {
+                    Joint = 0,
+                    Append = 1,
+                    Extra = 2,
+                    Locator = 3,
+                } Enum;
                 break;
+            case "app.ropeway.gamemastering.SaveDataManager.WarningState":
+                enum app_ropeway_gamemastering_SaveDataManager_WarningState {
+                    NONE = 0,
+                    AUTO_SAVE_ICON = 1,
+                    GENERAL_DIALOG = 2,
+                } Enum;
+                break;
+            case "app.ropeway.gamemastering.RogueGimmickManager.State":
+                enum app_ropeway_gamemastering_RogueGimmickManager_State {
+                    INVALID = -1,
+                    INITIALIZE = 0,
+                    WAIT_TO_INGAME = 1,
+                    INITIALIZE_TO_INGAME = 2,
+                    ENABLE = 3,
+                } Enum;
             default:
                 break;
         }
