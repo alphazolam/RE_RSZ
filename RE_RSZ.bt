@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.73
+//   Version: 0.731
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: January 29, 2022
+//   History: January 30, 2022
 //------------------------------------------------
 //              Option:                                                            //Effect:
 local string    RSZVersion       <hidden=false>       = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
@@ -591,23 +591,23 @@ void FixOffsets(uint64 tell, uint64 tellLimit, uint64 insertPoint, int64 maxOffs
     Printf("Fixing Offsets greater than %i and less than %i from positions %i to %i:\n\n", insertPoint, maxOffset, tell, tellLimit);
     local uint64 pos = FTell();
     local int64 tmp;
-    local int varSize = 8 + -4 * 0;
+    local int varSize = 8 + -4 * (doInt32 > 0);
     FSeek(tell);
     while(FTell() + varSize <= tellLimit) {
         if (FTell()+varSize > FileSize()) 
             break;
-        if (doInt32==1)
+        if (doInt32)
             tmp = ReadInt(FTell());
         else 
             tmp = ReadInt64(FTell());
         if (tmp >= insertPoint && tmp <= maxOffset) {
             Printf("@ position %i:  %Li  >= %Li (limit %i) added +%i\n", FTell(), tmp, insertPoint, maxOffset, addedSz);
-            if (doInt32==1) 
+            if (doInt32) 
                 tmp = WriteUInt(FTell(), tmp + addedSz);
             else 
                 WriteUInt64(FTell(), tmp + addedSz);
-        } else //if (tmp && tmp <= maxOffset)
-            Printf("@ position %i: %Li  >! %Li (limit %i) %i\n",  FTell(), tmp, insertPoint, tellLimit, addedSz);
+        }// else //if (tmp && tmp <= maxOffset)
+         //   Printf("@ position %i: %Li  >! %Li (limit %i) %i\n",  FTell(), tmp, insertPoint, tellLimit, addedSz);
         FSkip(varSize);
     }
 }
@@ -4494,7 +4494,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             FSeek(insertPt+1);
             while(FTell() < insertPt + stringSizeToAdd) {
                 if (ReadShort(FTell()) == 2560) //newline
-                    WriteShort(FTell(), 0);
+                    WriteShort(FTell(), 0);     //turn it into a null terminator
                 FSkip(2);
             }
         } else {
@@ -4588,7 +4588,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             } else { //regular header strings:
                 FixOffsets(0, sizeof(Header), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
                 FixOffsets(0, sizeof(Header), stringInsertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
-                FixOffsets(startBound, endBound, insertPt, FileSize()+sizeToAdd, sizeToAdd, 0);
+                FixOffsets(startBound, endBound, insertPt, FileSize()+sizeToAdd, sizeToAdd, (Header.magic == id_PFB)); //every 4-bytes, if its PFB
                 //FixOffsets(startBound, endBound, stringInsertPt+(sizeToAdd*ctr), FileSize()+sizeToAdd+stringSizeToAdd, sizeToAdd + stringSizeToAdd, 0);
             }
             
