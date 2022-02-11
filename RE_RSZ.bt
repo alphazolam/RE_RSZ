@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.731
+//   Version: 0.732
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: January 30, 2022
+//   History: February 11, 2022
 //------------------------------------------------
 //              Option:                                                            //Effect:
 local string    RSZVersion       <hidden=false>       = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
@@ -1745,7 +1745,6 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
             if (startof(RSZFile[lvl].RSZHeader) >= startof(RSZFile[i].RSZHeader) && startof(RSZFile[lvl]) 
                 + sizeof(RSZFile[lvl]) <= startof(RSZFile[i]) + sizeof(RSZFile[i])) { //if RSZFile[lvl] is inside RSZFile[i]...
                 extraAddSize = secAddedSz * (startof(RSZFile[lvl].RSZHeader) != startof(RSZFile[i].RSZHeader));
-                //Printf("Fixing RSZUserData in RSZ[%i]\n", i);
                 if (exists(RSZFile[i].RSZUserDataInfos) && sizeof(RSZFile[i].RSZUserDataInfos) > 1) {
                     k=0; 
                     while((RSZVersion == "RE2" || RSZVersion == "DMC5") && exists(RSZFile[i].RSZUserDataInfos.userDataInfo[k])) {
@@ -1788,7 +1787,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
         else
             wstring oldData = "";
         
-        if (s != " " && s[Strlen(s)-1] == 0x20)  //remove and random spaces from the end
+        if (s != " " && s[Strlen(s)-1] == 0x20)  //remove any random spaces from the end
             s[Strlen(s)-1] = 0;
         if (find(s, "\\\\") != -1) { //Formats a real filepath to RE Engine format
             if (find(s, "natives\\\\") != -1)
@@ -4061,17 +4060,17 @@ else {
             }
             if (structType == 1) {
                 if (sizeof(GameObjectInfos) == 1) {
-                    FixOffsets(0, startof(Header.folderInfoTbl)+40, GameObjectsEnd - startof(Header.resourceInfoTbl), FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
-                    FixOffsets(startof(GameObjectInfos), headerStrings[0], GameObjectsEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
+                    FixOffsets(0, startof(Header.folderInfoTbl)+40, GameObjectsEnd - startof(Header.resourceInfoTbl), FileSize()+gObjectSz*cycles, gObjectSz * cycles, (Header.magic == id_PFB));
+                    FixOffsets(startof(GameObjectInfos), headerStrings[0], GameObjectsEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, (Header.magic == id_PFB));
                 } else 
-                    FixOffsets(0, RSZOffset, GameObjectsEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
+                    FixOffsets(0, RSZOffset, GameObjectsEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, (Header.magic == id_PFB));
             } else if (structType == 2) {
                 if (sizeof(FolderInfos) == 1) {
                     Header.resourceInfoTbl += gObjectSz * cycles;
                     Header.dataOffset += gObjectSz * cycles;
-                    FixOffsets(startof(ResourceInfos), headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
+                    FixOffsets(startof(ResourceInfos), headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, (Header.magic == id_PFB));
                 } else
-                    FixOffsets(0, headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, 0);
+                    FixOffsets(0, headerStrings[0], FolderInfosEnd, FileSize()+gObjectSz*cycles, gObjectSz * cycles, (Header.magic == id_PFB));
             }
             
             if (RSZVersion == "RE2" || RSZVersion == "RE3" || RSZVersion == "DMC5")
@@ -4450,6 +4449,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
     }
     
     void HeaderStringWriterMethod(wstring s, ubyte structType, uint lvl) {
+        
         local int padBytes, findFirst;
         local ubyte isEmbedded = (structType == 3 && (RSZVersion == "RE2" || RSZVersion == "DMC5"));
         local uint oldInstanceCt = RSZFile[lvl].RSZHeader.instanceCount;
@@ -4588,7 +4588,9 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             } else { //regular header strings:
                 FixOffsets(0, sizeof(Header), insertPt + (sizeof(RSZFile[lvl].RSZUserDataInfos) == 1), FileSize()+sizeToAdd, sizeToAdd, 0);
                 FixOffsets(0, sizeof(Header), stringInsertPt, FileSize()+stringSizeToAdd, stringSizeToAdd, 0);
+                Printf("strt\n");
                 FixOffsets(startBound, endBound, insertPt, FileSize()+sizeToAdd, sizeToAdd, (Header.magic == id_PFB)); //every 4-bytes, if its PFB
+                Printf("end, %i \n", (Header.magic == id_PFB));
                 //FixOffsets(startBound, endBound, stringInsertPt+(sizeToAdd*ctr), FileSize()+sizeToAdd+stringSizeToAdd, sizeToAdd + stringSizeToAdd, 0);
             }
             
