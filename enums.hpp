@@ -239,7 +239,15 @@ void enums()  {
 		            KeyboardKey_OEM_102 = 226,
 		            KeyboardKey_Slash = 191,
 		            KeyboardKey_BackSlash = 220,
-	            } via_hid_KeyboardKey;
+	            } Enum;
+	            break;
+            case "app.ropeway.gimmick.CheckCondition.CheckLogic":
+	            enum {
+		            AND = 0,
+		            OR = 1,
+		            ALL_NOT = 2,
+		            NOT_CHECK_FLAG = 3,
+	            } Enum;
 	            break;
             default:
                 break;
