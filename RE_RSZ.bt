@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.75
+//   Version: 0.76
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: June 18, 2022
+//   History: July 1, 2022
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 
@@ -2673,10 +2673,13 @@ typedef struct {
         uint64 dataOffset;
         uint64 embedsInfoOffset;
         uint64 hashInfoOffset;
-        uint64 ukn;
-        uint UVARhash;
-        ushort variableCount;
-        ushort embedCount;
+        if (version < 3) {
+            uint64 ukn;
+            uint UVARhash;
+            ushort variableCount;
+            ushort embedCount;
+        } else
+            local uint variableCount = 0; //quick fix
     } header;
     local uint variableCount = header.variableCount;
     if (header.magic == id_uvar) {
@@ -2735,9 +2738,11 @@ typedef struct {
         }
         if (header.variableCount == 0) {
             FSeek(getAlignedOffset(FTell(),16));
-            struct {
-                uint64 NextOffset, NextOffset, NextOffset, NextOffset;
-            } EndOffsets;
+            //FSeek(getAlignedOffset(startof(header.variableCount),16));
+            if (FTell()+32 <= FileSize())
+                struct {
+                    uint64 NextOffset, NextOffset, NextOffset, NextOffset;
+                } EndOffsets;
         }
     }
 } UVAR <read=ReadUVAR>;
@@ -3009,6 +3014,10 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
             }
             if (RTVersion && RSZVersion == "RE7")
                 uint64 uknA;
+            if (FileNameGetExtension(filename) == ".20") {
+                uint32 ukn;
+                uint32 ukn;
+            }
             uint64 groupsPtrTbl;
             uint64 dataOffset <name="userDataStreamPtr">;
             uint64 requestSetTbl; 
@@ -4317,7 +4326,8 @@ else {
                     else 
                         InstanceWriterMethod(" *-1365059124_246280887", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); // non-RT method for RE2,3 and DMC5
                     break;
-                case "RE8": case "MHRise": InstanceWriterMethod(" *-1365059124_-1017511022", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break;
+                case "RE8": InstanceWriterMethod(" *-1365059124_-1017511022", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break;
+                case "MHRise": InstanceWriterMethod(" *-1365059124_-1378254784", 0, RSZFile[0].RSZHeader.instanceCount-1, 2, false, 0); break; //Sunbreak version
                 default: break;
             }            
         }
