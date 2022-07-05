@@ -3,15 +3,14 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.76
+//   Version: 0.761
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: July 1, 2022
+//   History: July 5, 2022
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
-
 //              Option:                                                            //Effect:
 local string    RSZVersion       <hidden=true>        = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
 local int       RTVersion        <hidden=true>        = TRUE;                      //Use Ray-Tracing Update file formats for RE7, RE2R and RE3R (subject to AutoDetectGame)
@@ -600,6 +599,8 @@ void FixRCOLOffsets(uint sizeToAdd, uint insertPt, int64 limitOffset) {
         //    Header.userDataSize = sizeof(RSZFile[0]);
         FixOffsets(0, Groups.shapesEnd, insertPt, limitOffset, sizeToAdd, 0);
         FixOffsets(startof(RequestSets), startof(RequestSets)+sizeof(RequestSets), insertPt, limitOffset, sizeToAdd, 0);
+        if (exists(IgnoreTags))
+            FixOffsets(startof(IgnoreTags), startof(IgnoreTags)+sizeof(IgnoreTags), insertPt, limitOffset, sizeToAdd, 0);
     }
 }
 
@@ -2673,18 +2674,18 @@ typedef struct {
         uint64 dataOffset;
         uint64 embedsInfoOffset;
         uint64 hashInfoOffset;
-        if (version < 3) {
+        if (version < 3)
             uint64 ukn;
-            uint UVARhash;
-            ushort variableCount;
-            ushort embedCount;
-        } else
-            local uint variableCount = 0; //quick fix
+        uint UVARhash;
+        ushort variableCount;
+        ushort embedCount;
     } header;
+    
     local uint variableCount = header.variableCount;
+    
     if (header.magic == id_uvar) {
         local uint UVARStart <hidden=true> = BHVTStart;
-        if (header.dataOffset + BHVTStart < startof(this) + 56)
+        if (header.dataOffset + BHVTStart < startof(this) + 56 - 8*(header.version > 2))
             UVARStart = startof(this); 
         
         if (header.variableCount && header.dataOffset+this.UVARStart > startof(this)) { 
@@ -2704,7 +2705,7 @@ typedef struct {
                     WSTRING str <open=suppress>;
             } Strings;
         }
-        if (header.dataOffset + BHVTStart < startof(this) + 56)
+        if (header.dataOffset + BHVTStart < startof(this) + 56 - 8*(header.version > 2))
             this.UVARStart = startof(this); 
         
         if (header.variableCount ) { //&& header.hashInfoOffset+this.UVARStart > startof(this)
@@ -3197,6 +3198,7 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
                         }
                     }
                 } mNamePool;
+                
                 FSeek(resourcePathsOffset+startof(this));
                 struct BHVTStringPool mPathNamePool;
                 if (exists(userdataPathsOffset) && ReadUInt(userdataPathsOffset+startof(this)) != 2) {
@@ -3208,18 +3210,27 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
                 while (FTell()+8<FileSize() && ReadUInt(FTell()+4) != id_uvar) FSkip(1);
                 while(FTell() + 8 < FileSize()){
                     if (exists(Uvar[0]))
-                        struct UVAR Uvar <hidden=false>;
-                    else struct UVAR Uvar;
+                        struct UVAR Uvar <hidden=true>;
+                    else 
+                        struct UVAR Uvar;
                     FSeek(startof(Uvar)+8);
                     while (FTell() + 8 < FileSize() && ReadUInt(FTell()+4) != id_uvar) 
                         FSkip(1);
                 }
                 FSeek(baseVariableOffset+startof(this));
-                
                 unsigned int mReferenceTreeCount;
-                if (FTell()+8 <= FileSize())
-                    uint64 thisOffset;
-                
+                if (mReferenceTreeCount) {
+                    FSeek(startof(mReferenceTreeCount)+4);
+                    struct {
+                        struct referenceTree {
+                            uint64 referenceTreeOffset;
+                            FSeek(referenceTreeOffset+startof(parentof(parentof(this))));
+                            struct UVAR Uvar;
+                            FSeek(startof(this)+8);
+                        } ReferenceTree[mReferenceTreeCount] <optimize=false, size=8, read=ReadReferenceTree>;
+                        
+                    } ReferenceTrees;
+                }
                 FSeek(startof(baseVariableOffset) + 8 + (8 * (!(RSZVersion=="RE2" && !RTVersion) && RSZVersion!="DMC5")));
             } BHVT;
         }
@@ -3232,6 +3243,8 @@ else {
     } Header;
     FSkip(-1);
 }
+    
+    string ReadReferenceTree(referenceTree &r) { return ReadUVAR(Header.BHVT.Uvar[(startof(r) - startof(parentof(r))) / 8]); }
     
     typedef struct {
         struct BHVTCount TagsCount(1); 
@@ -6050,17 +6063,29 @@ if (ReadUInt(0) == id_RCOL) {
             FSeek(endRequestSets);
         } RequestSets;
     }
+    if (exists(Header.numIgnoreTags) && Header.numIgnoreTags) {
+        FSeek(Header.ignoreTagTbl);
+        struct {
+            struct ignoreTag {
+                struct StringRead ignoreTagString(-1, 0, 0);
+                uint32 hash;
+                uint32 ukn;
+            } IgnoreTag[Header.numIgnoreTags] <read=ReadIgnoreTag, optimize=false>;
+        } IgnoreTags;
+    }
 } 
 
     wstring ReadGroup(RcolGroup &g) { return ReadWString(ReadUInt64(startof(g)+16)); }
-
-    wstring ReadShape(RcolShape &s) { return s.ShapeInfo.Name.String; } 
 
     wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16)); }
 
     wstring ReadRequestSetName(RcolRequestSet &a) { string s; SPrintf(s, "RequestSet ID: %u  ", ReadUInt(startof(a))); return s; }
 
     wstring ReadRcolShapeInfo(RcolShapeInfo &r) { return r.primaryJointNameStr.String + "  " + r.secondaryJointNameStr.String; }
+
+    wstring ReadShape(RcolShape &s) { if (s.ShapeInfo.Name.String != "") return s.ShapeInfo.Name.String; else return ReadRcolShapeInfo(s.ShapeInfo);} 
+
+    wstring ReadIgnoreTag(ignoreTag &i) { return i.ignoreTagString.String; } 
 
 
 //fix headerstrings array
