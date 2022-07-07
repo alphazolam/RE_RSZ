@@ -2185,23 +2185,12 @@ typedef struct {
     
     if (exists(RSZFile[lvl].RSZUserDataInfos) && sizeof(RSZFile[lvl].RSZUserDataInfos) != 1)
         for (j=0; j<RSZFile[lvl].RSZHeader.userdataCount; j++)
-            if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].typeId.Hash == hash) 
-                { isUserData = TRUE; break; }
-
-    if (name == "Unknown Class!"){
-        Printf("Hash %X not found in JSON %s\n", hash, RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.HashName);
-        byte skip <hidden=true>;
-    } else if (idx && GetFieldCount(hash) == 0xFFFFFFFF) { 
-        Printf("Class %u %s not detected in JSON!\n", hash, name);
-        byte skip <hidden=true>;
-    } else if (isUserData) {
-        if (FEof()) 
-            FSkip(-1);
-        byte skipFileData <hidden=true>;
-        local short userDataIdx <hidden=false> = -1;
-        for (j=0; j<RSZFile[lvl].RSZHeader.userdataCount; j++)
-            if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].instanceId == RSZ.idx) { 
-                userDataIdx = j;
+            if (RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].typeId.Hash == hash && RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].instanceId == RSZ.idx) { 
+                isUserData = TRUE;
+                if (FEof()) 
+                    FSkip(-1);
+                byte skipFileData <hidden=true>;
+                local short userDataIdx = j;
                 if ((!(RSZVersion == "RE2" && !RTVersion) && RSZVersion != "DMC5")) {
                     local wstring userDataPath <hidden=true> = RSZFile[lvl].RSZUserDataInfos.userDataInfo[j].path.String; 
                     local wstring fullPath <hidden=true>;
@@ -2211,7 +2200,14 @@ typedef struct {
                 }
                 break; 
             }
-    } else if (idx && !FEof()) {
+
+    if (name == "Unknown Class!"){
+        Printf("Hash %X not found in JSON %s\n", hash, RSZFile[lvl].InstanceInfos.instanceInfo[idx].typeId.HashName);
+        byte skip <hidden=true>;
+    } else if (idx && GetFieldCount(hash) == 0xFFFFFFFF) { 
+        Printf("Class %u %s not detected in JSON!\n", hash, name);
+        byte skip <hidden=true>;
+    } else if (idx && !FEof() && !isUserData) {
         local int z <hidden=true>, FieldType <hidden=true>, FieldSize <hidden=true>, IsList <hidden=true>;
         for (z = 0; z < GetFieldCount(hash); z++) {
             FieldType = (TypeIDs)GetFieldType(hash, z);
@@ -2245,6 +2241,7 @@ typedef struct {
             SetBackColor(cNone);
         }
     } 
+    
     if (!finished && FEof())
         i = RSZHeader.instanceCount; 
     

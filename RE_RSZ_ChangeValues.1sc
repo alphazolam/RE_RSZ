@@ -11,7 +11,7 @@
 
 
 //Options:
-local int inputValue = 0; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = 1; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
 
 void runScripts() 
