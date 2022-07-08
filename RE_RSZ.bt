@@ -5619,6 +5619,7 @@ typedef struct(BHVTlvl lv, string Name) {
             if (lvl == -1) {
                 while (exists(BehaviorTree.RawNodes.Node[kk]) ) {
                     if (Type == id_Tags) {
+                        if(exists(BehaviorTree.RawNodes.Node[kk].Tags)) // workaround for some weird file 
                         if (BehaviorTree.RawNodes.Node[kk].Tags.TagsCount.Count > 1) {
                             for (tg=0; tg<BehaviorTree.RawNodes.Node[kk].Tags.TagsCount.Count; tg++) {
                                 valueStart = 0;
