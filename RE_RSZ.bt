@@ -57,6 +57,7 @@ ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
 
 #include "enums.hpp"
+#include "TagsCollection.bt"
 
 //Local variables:
 local int i <hidden=true>, j <hidden=true>, k <hidden=true>, m <hidden=true>, n <hidden=true>, o <hidden=true>, h <hidden=true>, temp <hidden=true>,
@@ -3249,10 +3250,10 @@ else {
             if (TagsCount.Count > 1) 
                 struct { 
                     for (i=0; i<TagsCount.Count; i++) 
-                        int Tags <format=hex>; 
+                        TagsCollection Tags <format=hex>; 
                 } Tags; 
             else if (TagsCount.Count == 1) 
-                int Tags <format=hex>;
+                TagsCollection Tags <format=hex>;
         } else {
             if (TagsCount.Count && TagsCount.Count < FileSize() && FTell() + TagsCount.Count * 4 < RSZOffset)
                 if (TagsCount.Count > 1) { 
