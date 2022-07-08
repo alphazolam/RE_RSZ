@@ -3312,7 +3312,7 @@ else {
     
     typedef struct {
         FSeek(pos);
-        struct BHVTId mStates(id_All, "", 1); 
+        struct BHVTId mStates(id_TransitionEvents, "", 1); 
         pos = FTell();
         for (j=mm+1; j<StatesCount.Count; j++)
             fakeStateList();
