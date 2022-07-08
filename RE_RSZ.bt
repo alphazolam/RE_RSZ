@@ -3297,7 +3297,7 @@ else {
             struct BHVTHash mStartTransitionEvent(id_All, "");          
             FSkip(4 * TransitionCount.Count - 4);
         }
-        if (detectedHash(FTell()) && ReadUByte(FTell()+2) != 0) 
+        if (detectedHash(FTell()) /*&& ReadUByte(FTell()+2) != 0*/) // there are hash zero at [3]
             struct BHVTHash mStartState(id_All, "");
         else
             struct BHVTId mStartState(id_All, "", 0);
