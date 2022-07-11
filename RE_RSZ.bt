@@ -1185,7 +1185,7 @@ typedef ubyte Bool <read=ReadBOOL, write=WriteBOOL>;
     }
 
 //main typedef for RSZ chunks:
-typedef struct(uint32 classHash, ubyte fieldIndex) {
+typedef struct(uint32 classHash, uint16 fieldIndex) {
     local uint varStart <hidden=true> = FTell();
     local ubyte lvl <hidden=true> = level;
     if (exists(parentof(this).lvl)) 
@@ -1194,7 +1194,7 @@ typedef struct(uint32 classHash, ubyte fieldIndex) {
     //    lvl = getLevel(FTell());
     local ubyte padding <hidden=true> = varStart - lastVarEnd;
     local uint32 classHash <hidden=true> = classHash;
-    local ubyte fieldIndex <hidden=true> = fieldIndex;
+    local uint16 fieldIndex <hidden=true> = fieldIndex;
     local string fieldName <hidden=true> = GetFieldName(classHash, fieldIndex);
     local string fieldDataType <hidden=true> = GetFieldTypeName(classHash, fieldIndex);
     local TypeIDs fieldType <hidden=true> = GetFieldType(classHash, fieldIndex);
