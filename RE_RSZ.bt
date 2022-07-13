@@ -57,6 +57,7 @@ ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
 
 #include "enums.hpp"
+#include "TagsCollection.bt"
 
 //Local variables:
 local int i <hidden=true>, j <hidden=true>, k <hidden=true>, m <hidden=true>, n <hidden=true>, o <hidden=true>, h <hidden=true>, temp <hidden=true>,
@@ -3249,10 +3250,10 @@ else {
             if (TagsCount.Count > 1) 
                 struct { 
                     for (i=0; i<TagsCount.Count; i++) 
-                        int Tags <format=hex>; 
+                        TagsCollection Tags <format=hex>; 
                 } Tags; 
             else if (TagsCount.Count == 1) 
-                int Tags <format=hex>;
+                TagsCollection Tags <format=hex>;
         } else {
             if (TagsCount.Count && TagsCount.Count < FileSize() && FTell() + TagsCount.Count * 4 < RSZOffset)
                 if (TagsCount.Count > 1) { 
@@ -3296,7 +3297,7 @@ else {
             struct BHVTHash mStartTransitionEvent(id_All, "");          
             FSkip(4 * TransitionCount.Count - 4);
         }
-        if (detectedHash(FTell()) && ReadUByte(FTell()+2) != 0) 
+        if (detectedHash(FTell()) /*&& ReadUByte(FTell()+2) != 0*/) // there are hash zero at [3]
             struct BHVTHash mStartState(id_All, "");
         else
             struct BHVTId mStartState(id_All, "", 0);
@@ -3311,7 +3312,7 @@ else {
     
     typedef struct {
         FSeek(pos);
-        struct BHVTId mStates(id_All, "", 1); 
+        struct BHVTId mStates(id_TransitionEvents, "", 1); 
         pos = FTell();
         for (j=mm+1; j<StatesCount.Count; j++)
             fakeStateList();
@@ -5619,6 +5620,7 @@ typedef struct(BHVTlvl lv, string Name) {
             if (lvl == -1) {
                 while (exists(BehaviorTree.RawNodes.Node[kk]) ) {
                     if (Type == id_Tags) {
+                        if(exists(BehaviorTree.RawNodes.Node[kk].Tags)) // workaround for some weird file 
                         if (BehaviorTree.RawNodes.Node[kk].Tags.TagsCount.Count > 1) {
                             for (tg=0; tg<BehaviorTree.RawNodes.Node[kk].Tags.TagsCount.Count; tg++) {
                                 valueStart = 0;
