@@ -45,6 +45,7 @@ local wstring RE7RTPath <hidden=true>  =              "F:\\modmanager\\REtool\\R
 ubyte   IsInitialized();
 void    ParseJson(string jsonPath);
 string  GetRSZClassName(uint32 classHash);
+uint32  GetRSZClassCRC(uint32 classHash);
 uint32  GetFieldCount(uint32 classHash);
 uint32  GetFieldAlignment(uint32 classHash, uint32 fieldIndex);
 ubyte   GetFieldArrayState(uint32 classHash, uint32 fieldIndex);
@@ -246,7 +247,7 @@ void AutoDetectVersion() {
                 }
                 if (hashName == "Unknown Class!") { //checkedVersions == 8 && 
                     RSZVersion = origVersion; extractedDir = origExtractedDir; xFmt = origXFmt; 
-                    Local_Directory = origLocal_Directory; JsonPath = origJsonPath; RTVersion = OrigRTVersion;
+                    Local_Directory = origLocal_Directory; JsonPath = origJsonPath; RTVersion = origRTVersion;
                 } else {
                     Printf("RSZVersion auto detected to %s\n", RSZVersion);
                     break;
@@ -1505,7 +1506,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         }
                     } else if (elementSize == 64 || elementSize == 80) {
                         fieldDataType = "Mat4";
-                        if (FTell()+4 <= FileSize()) {
+                        if (FTell()+elementSize <= FileSize()) {
                             float data <name="float x1">, data <name="float y1">, data <name="float z1">, data <name="float w1">;
                             float data <name="float x2">, data <name="float y2">, data <name="float z2">, data <name="float w2">;
                             float data <name="float x3">, data <name="float y3">, data <name="float z3">, data <name="float w3">;
@@ -5088,7 +5089,10 @@ typedef struct {
                 int64 CombinedKey <read=ReadCombinedKey>;
                 FSkip(-8);
                 InsertKey NewKey;
+                local uint expectedCRC = GetRSZClassCRC(typeId.Hash);
                 local ubyte isObject <hidden=true>;
+                if (expectedCRC != CRC) 
+                    Printf("Incorrect CRC for %s at %i\n", typeId.HashName, FTell()-4);
                 if (!i)
                     typeId.HashName = "NULL";
                 if (RSZVersion == "RE7" && !RTVersion)
@@ -5741,7 +5745,7 @@ if (RSZOffset > -1) {
                 }
             }
             if (ReadUInt(FTell()+8) == 0)
-                struct RSZMagic RSZFile <hidden=true>;
+                struct RSZMagic RSZFile <hidden=false>;
             else {
                 //start at struct Data if there are embedded userdatas:
                 if (ExposeUserDatas && ReadInt(FTell()+16) && (exists(GameObjectInfos.GameObjectInfo) || exists(BehaviorTree)) && (RSZVersion == "DMC5" || (RSZVersion == "RE2" && !RTVersion))) { //has UserDatas
