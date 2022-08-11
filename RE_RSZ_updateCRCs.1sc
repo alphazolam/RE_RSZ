@@ -6,6 +6,8 @@
 //   Version: 0.1
 //   Purpose: Updating outdated RSZ files to newest game version
 //  Category: RE Engine
+// File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
+//  ID Bytes: 
 //   History: August 11, 2022 -- Thanks to Darkness for adding the new "GetRSZClassCRC" function to RSZParser.dll
 //------------------------------------------------
 local int lv, r;
@@ -14,7 +16,8 @@ for (lv=0; lv<level; lv++) {
     while (exists(RSZFile[lv].InstanceInfos.instanceInfo[r])) {
         if (RSZFile[lv].InstanceInfos.instanceInfo[r].CRC != RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC) {
             Printf("Updating CRC for %s at %i from %u to %u\n", RSZFile[lv].InstanceInfos.instanceInfo[r].typeId.HashName, startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].CRC, RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC);
-            RSZFile[lv].InstanceInfos.instanceInfo[r].CRC = RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC;
+            WriteUInt(startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC)
+            //RSZFile[lv].InstanceInfos.instanceInfo[r].CRC = RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC;
         }
         r++;
     }
