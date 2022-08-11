@@ -16,7 +16,7 @@ for (lv=0; lv<level; lv++) {
     while (exists(RSZFile[lv].InstanceInfos.instanceInfo[r])) {
         if (RSZFile[lv].InstanceInfos.instanceInfo[r].CRC != RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC) {
             Printf("Updating CRC for %s at %i from %u to %u\n", RSZFile[lv].InstanceInfos.instanceInfo[r].typeId.HashName, startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].CRC, RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC);
-            WriteUInt(startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC)
+            WriteUInt(startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC);
             //RSZFile[lv].InstanceInfos.instanceInfo[r].CRC = RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC;
         }
         r++;
