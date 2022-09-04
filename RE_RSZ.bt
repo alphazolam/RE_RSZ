@@ -3,7 +3,7 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.763
+//   Version: 0.764
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
@@ -1988,7 +1988,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     else if (s == " " && exists(r.path))
                         WriteStringRead(r.path, (string)s);
                     else
-                        WriteInt(pos, Atoi(s)); 
+                        WriteInt(pos, Atoi(s));
                     break;
                 case Size_tid:
 		        case S32_tid:
@@ -2004,7 +2004,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 		        case U64_tid:
                     //18446744073709551000 //9223300036854775000 //4294967288
                     //Printf("%Lf\n", Atof(s));
-                    WriteUInt64(pos, (uint64)Atof(s + ".0")); break;
+                    WriteUInt64(pos, (uint64)Atof(s)); break;
                 case F32_tid:
                     WriteFloat(pos, Atof(s)); break;
                 case String_tid:
@@ -4183,12 +4183,14 @@ else {
                         i++;
                     } 
                 }
-                endPadPt = startof(RSZFile[lvl].Data) + sizeof(RSZFile[lvl].Data);    
-                if (structType == 4) { //count
-                    alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex], startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex])
-                        + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]), RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex].elementSize, s);
-                } else if (flag != 1)
-                    alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[0], newDataInsertPt, 0, s);
+                endPadPt = startof(RSZFile[lvl].Data) + sizeof(RSZFile[lvl].Data); 
+                Printf("Flag is %u\n", flag);
+                if (flag != 3) //flag 3 indicates empty RSZUserDatas
+                    if (structType == 4) { //count
+                        alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex], startof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex])
+                            + sizeof(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex]), RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[fieldIndex].elementSize, s);
+                    } else if (flag != 1) 
+                        alignChangeSz = fixAlignment(RSZFile[lvl].Data.RawData.RSZ[insertIndex].var[0], newDataInsertPt, 0, s);
 
                 local uint newEndPadPt = endPadPt+alignChangeSz;
                 endPadding = calculatePaddingAtPoint(newEndPadPt, endPadPt, startof(RSZFile[lvl].RSZHeader) % 16, 0);
@@ -4682,7 +4684,7 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 insertPt = startof(RSZFile[lvl].RSZUserDataInfos) + RSZFile[lvl].RSZHeader.userdataCount * (16 + (8 * isEmbedded));
             } 
             
-            if (structType == 3) {
+            if (structType == 3) { //RSZUserData
                 
                 if (!isEmbedded && RSZFile[lvl].RSZUserDataInfos.RSZUserDataInfoWriter.RSZUserDataInfoPath == "") {
                     Printf("ERROR: No filepath to write, aborting...\n");
@@ -4693,11 +4695,13 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                 }
                 Printf("path %s\n", pathString);
                 local uint uidx = oldInstanceCt - (s[0] != 0x20);
+                local ubyte foundUserData = false;
                 if (FindFirst(Atoi(StrDel(s,0,1))) != -1) { //if the userdata is already in the file but unused
                     for (h=0; h<RSZFile[lvl].RSZHeader.instanceCount; h++) {
                         if (ReadInt(startof(RSZFile[lvl].InstanceInfos.instanceInfo[h])) == Atoi(StrDel(s,0,1)) && !exists(RSZFile[lvl].Data.RawData[h])) {
                             uidx =  h;
                             ctr = 0;
+                            foundUserData = true;
                             //break;
                         }
                     }
@@ -4768,8 +4772,16 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
             if (structType == 3 && Abs(Atoi(StrDel(s, 0, 1))) > 10000) {
                 RSZFile[lvl].RSZHeader.userdataCount += 1;
                 silenceMessages = TRUE;
-                if (ctr > 0)
-                    addedSzRecord = InstanceWriterMethod((string)s, lvl, RSZFile[lvl].RSZHeader.instanceCount-1, 0, false, 0);
+                // -529421801_-1775141870 weapon/InsectGlaive/Gimmick/PartsGimmick/InsectGlaive_PartsGmk006.user
+                if (!foundUserData) { //ctr > 0
+                    local uint RSZUInsertIdx = RSZFile[lvl].RSZHeader.instanceCount-1;
+                    local string ss; SPrintf(ss, "%u", RSZUInsertIdx);
+                    RSZUInsertIdx = InputNumber("Instance Insert Point", "What ObjectID should the new RSZUserData Instance have?", ss) - 1;
+                    if (RSZUInsertIdx >= RSZFile[lvl].RSZHeader.instanceCount)
+                        RSZUInsertIdx = RSZFile[lvl].RSZHeader.instanceCount - 1;
+                    /*addedSzRecord = */InstanceWriterMethod((string)s, lvl, RSZUInsertIdx, 0, 3, 0); //!isEmbedded*
+                    uidx = RSZUInsertIdx + 1;
+                }
                 if (exists(UserDataInfos.UserDataInfoWriter) && MessageBox(idYes | idNo, "Insert Data", "Do you want to insert a matching UserDataInfo in the file header?") == idYes) {
                     secAddedSzRecord = FileSize();
                     WriteNewUserDataInfo(UserDataInfos.UserDataInfoWriter, pathString);
