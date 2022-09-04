@@ -3,15 +3,15 @@
 //
 //      File: RE_RSZ_ChangeValues.1sc
 //   Authors: alphaZomega
-//   Version: 0.361 
+//   Version: 0.362
 //   Purpose: Script to modify input RE Engine RSZ variables within a range
 //  Category: RE Engine
-//   History: January 22, 2021
+//   History: September 4, 2022
 //------------------------------------------------
 
 
 //Options:
-local int inputValue = 1; //set this to FALSE and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
+local int inputValue = 1; //set this to 0 and you can set your own list of commands to the bottom of this script, to run it multiple times automatically
 
 
 void runScripts() 
@@ -19,7 +19,8 @@ void runScripts()
     //Set up automatic scripting here:
     //You can set "objectNameToFind" to only change ones that are referenced with specific Object names. Unset it after using the runScript() for it.
     //Various examples below. 
-    
+    runScript("_Offset", "app.ropeway.camera.PlayerCameraParam[8]", "", "*1 0.85 1");
+   
     //runScript("Cone", "", "", "*0.45");
     //runScript("ShadowBias", "", "", "0.00065");
     //runScript("BlackBodyRadiation", "", "", "1");
@@ -211,6 +212,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
         not = TRUE;
         searchValue = SubStr(searchValue, 1, sizeof(searchValue)-1);
     }
+    
     if (changeValue[0] == 0x2A)
         multiply = TRUE;
     else if (changeValue[0] == 0x2F)
@@ -222,6 +224,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
     if (multiply || add || divide || random)  {
         changeValue = SubStr(changeValue, 1, sizeof(changeValue)-1);
     }
+    
     instanceToChange = Lower((wstring)instanceToChange);
     for (lv=0; lv<level; lv++) {
         r = 0;
@@ -233,6 +236,7 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
             while (exists(RSZFile[lv].Data.RawData.RSZ[r].var[v])) {
                 if ( (GetSelSize() < 64 || (startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) >= GetSelStart() 
                 && startof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) + sizeof(RSZFile[lv].Data.RawData.RSZ[r].var[v]) <= GetSelStart() + GetSelSize())) ) {
+                    
                     if (checkForObjectIndex(RSZFile[lv].Data.RawData.RSZ[r].var[v]) || ((RSZFile[lv].Data.RawData.RSZ[r].var[v].fieldName == fieldToChange  
                     && (instanceToChange == "" || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].name)
                     || instanceToChange == Lower((wstring)RSZFile[lv].Data.RawData.RSZ[r].title)))) ) {
@@ -260,8 +264,8 @@ void runScript(string fldToChange, string instToChange, string srchValue, wstrin
             }
             r++;
         }
-        if (GetSelSize() && startof(RSZFile[lv]) >= GetSelStart() && startof(RSZFile[lv])+sizeof(RSZFile[lv]) > GetSelStart()+GetSelSize())
-            break;
+        //if (GetSelSize() && startof(RSZFile[lv]) >= GetSelStart() && startof(RSZFile[lv])+sizeof(RSZFile[lv]) > GetSelStart()+GetSelSize())
+        //    break;
     }
 
 

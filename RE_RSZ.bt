@@ -3,12 +3,12 @@
 //
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega w/ help from Darkness and Praydog
-//   Version: 0.761
+//   Version: 0.763
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*
 //  ID Bytes: 
-//   History: July 5, 2022
+//   History: September 4, 2022
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                            //Effect:
@@ -112,13 +112,15 @@ if (AutoDetectGame) {
         RTVersion = false;
     }
     
+    o = 0;
     local string xFmt <hidden=true> = "x64\\";
+
     if (find(dir, "dmc") != -1 || find(dir, "evil may") != -1) {
-	    RSZVersion = "DMC5";
+	    RSZVersion = "DMC5"; o = 1;
 	    extractedDir = DMC5Path;
         Printf("Detected DMC in filepath\n");
     } else if (find(dir, "re2") != -1 || find(dir, "evil 2") != -1) {
-        RSZVersion = "RE2";
+        RSZVersion = "RE2"; o = 1;
         if (RTVersion) {
 	        extractedDir = Lower(RE2RTPath);
 	        xFmt = "stm\\";
@@ -128,20 +130,21 @@ if (AutoDetectGame) {
         }
         Printf("Detected RE2 in filepath\n");
     } else if (find(dir, "re3") != -1 || find(dir, "evil 3") != -1) {
-	    RSZVersion = "RE3";
+	    RSZVersion = "RE3";  o = 1;
         if (RTVersion) 
 	        extractedDir = Lower(RE3RTPath);
         else 
 	        extractedDir = Lower(RE3Path);
         xFmt = "stm\\";
         Printf("Detected RE3 in filepath\n");
+       
     } else if (find(dir, "re8") != -1 || find(dir, "evil 8") != -1 || find(dir, "illage") != -1) {
-	    RSZVersion = "RE8";
+	    RSZVersion = "RE8"; o = 1;
 	    extractedDir = Lower(RE8Path);
 	    xFmt = "stm\\";
         Printf("Detected RE8 in filepath\n");
     } else if (find(dir, "re7") != -1 || find(dir, "evil 7") != -1) {
-	    RSZVersion = "RE7";
+	    RSZVersion = "RE7"; o = 1;
         if (RTVersion) {
 	        extractedDir = Lower(RE7RTPath);
 	        xFmt = "stm\\";
@@ -151,7 +154,7 @@ if (AutoDetectGame) {
         }
         Printf("Detected RE7 in filepath\n");
     } else if (find(dir, "\\mhr") != -1 || find(dir, "nter R") != -1 || find(dir, "Rise") != -1) {
-	    RSZVersion = "MHRise";
+	    RSZVersion = "MHRise"; o = 1;
 	    extractedDir = Lower(MHRPath);
 	    xFmt = "stm\\";
         Printf("Detected MHRise in filepath\n");
@@ -173,7 +176,7 @@ if (RTVersion)
 JsonPath = JsonPath + ".json";
 ParseJson(JsonPath);
 
-if (RSZOffset > -1 && AutoDetectGame && !(RSZVersion == "RE7" && !RTVersion))
+if ( RSZOffset > -1 && AutoDetectGame && !(RSZVersion == "RE7" && !RTVersion))
     AutoDetectVersion();
 
 local string VisibleRSZVersion <name="Game Version"> = RSZVersion;
@@ -536,7 +539,7 @@ typedef struct(int listSize) {
                 Printf("inserting %i bytes at %i for +%i new items\n", 4 * (newCount - c.Count), startof(c) + 4 + (c.Count*4) * k, newCount - c.Count);
             }
             if (padding)
-                InsertBytes(RSZOffset+addedSz, padding, 0);
+                InsertBytes(RSZOffset+addedSz, padding, 0); 
             ShowRefreshMessage("");
         }
         c.Count = newCount;
@@ -1450,12 +1453,20 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 if (find((wstring)fieldDataType, "tring") == -1) { //if NOT a string:
                     if (elementSize == 1 ) { 
                         fieldDataType = "Byte";
-                        if (FTell()+1 <= FileSize())
+                        if (FTell()+1 <= FileSize()) {
 				            byte data;
+                            FSkip(-1);
+                            ubyte data_as_ubyte;
+                            local ubyte showInt <hidden=true> = true;
+                        }
                     } else if (elementSize == 2) {
                         fieldDataType = "Int16";
-                        if (FTell()+2 <= FileSize())
+                        if (FTell()+2 <= FileSize()) {
 				            short data;
+                            FSkip(-2);
+                            ushort data_as_ushort;
+                            local ubyte showInt <hidden=true> = true;
+                        }
                     } else if (elementSize == 4) {
                         fieldDataType = "Data";
                         if (FTell()+4 <= FileSize())
@@ -1481,7 +1492,10 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                                 if (FTell()+4 <= FileSize()) {
 				                    int data;
                                     FSkip(-4);
+                                    uint data_as_uint;
+                                    FSkip(-4);
                                     float data_As_Float;
+                                    local ubyte showInt <hidden=true> = true;
                                 }
                             }
                     } else if (elementSize == 8) {
@@ -1610,8 +1624,9 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
         else if (elementSize == 4 && exists(data) && startof(data)+4 <= FileSize() && ReadInt(startof(data)) <= 512)
             enums();
         
-        if (!finished || (fieldType == Data_tid && !exists(ObjectIndex))) {
-            local string OriginalType = fieldOrgTypeName;
+        if (!finished || (fieldType != Data_tid && !exists(ObjectIndex))) { //
+            if (fieldOrgTypeName != "")
+                local string OriginalType = fieldOrgTypeName;
             if (!finished) {
                 FSkip(-1);
                 ubyte FieldNamer <read=ReadVariableNamer, write=WriteVariableName>;
@@ -1704,24 +1719,33 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 case Data_tid:
                     if (!exists(r.RSZ) && !exists(r.UserData) && exists(r.data)) {
                         if (r.elementSize == 1 ) { //|| r.fieldOrgTypeName == "Data1A1"
-                            if (r.data == 1) {
+                            if (r.data == 1)
                                 s = "True";
-                            } else if (r.data == 0) {
+                            else if (r.data == 0)
                                 s = "False";
-                            } else 
-                                SPrintf(s, "%i", r.data);
+                            else if (r.showInt)
+                                SPrintf(s, "%i", ReadByte(startof(r.data)));
+                            else
+                                SPrintf(s, "%u", ReadUByte(startof(r.data)));
+                        } else if (r.elementSize == 2) {
+                            if (r.showInt)
+                                SPrintf(s, "%i", ReadShort(startof(r.data)));
+                            else
+                                SPrintf(s, "%u", ReadUShort(startof(r.data)));
                         } else if (r.elementSize == 4) {
                             if (r.data != 0 && detectedFloat(startof(r.data)))
                                 SPrintf(s, "%f", ReadFloat(startof(r.data)));
                             else if (Abs(r.data) > 1000000) 
                                 SPrintf(s, "%X", ReadInt(startof(r.data)));    
-                            else 
+                            else if (r.showInt)
                                 SPrintf(s, "%i", ReadInt(startof(r.data)));
+                            else
+                                SPrintf(s, "%u", ReadUInt(startof(r.data)));
                         } else if (r.elementSize == 8) {
                             if (exists(r.data[1]) && (detectedFloat(FTell()) || detectedFloat(FTell()+4)))
-                                SPrintf(s, "[%g, %g]", r.data[0], r.data[1]);
+                                SPrintf(s, "[%g, %g]", ReadFloat(startof(r.data[0])), ReadFloat(startof(r.data[1])));
                             else
-                                SPrintf(s, "%Li", r.data);
+                                SPrintf(s, "%Li", ReadInt64(startof(r.data[0])));
                         } else if (r.elementSize == 16) {
                             if (exists(r.Guid))
                                 s = ReadrGUID(r.Guid);
@@ -1753,16 +1777,19 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 		        case S16_tid:
 		        case S32_tid:
 		        case S64_tid:
-		        case Size_tid:
-                case U8_tid:
-		        case U16_tid:
-		        case U32_tid:
-		        case U64_tid:
 			    case Enum_tid:
                     if (exists(r.Enum))
                         SPrintf(s, "%s (%Li)", EnumToString(r.Enum), r.data);
                     else if (exists(r.data))
                         SPrintf(s, "%Li", r.data);
+                    break;
+                case U8_tid:
+		        case U16_tid:
+		        case U32_tid:
+		        case U64_tid:
+		        case Size_tid:
+                    if (exists(r.data))
+                        SPrintf(s, "%Lu", r.data);
                     break;
                 case F32_tid:
                     if (exists(r.data))
@@ -1948,6 +1975,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
             FileOpener(r.fullPath);
         } else {
             local int pos = r.varStart;
+            //local string ss;
             switch (r.fieldType) {
                 case Bool_tid:
                     WriteBOOL(r.data, s); break;
@@ -1966,15 +1994,17 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 		        case S32_tid:
                     WriteInt(pos, Atoi(s)); break;
 		        case S64_tid:
-                    WriteInt64(pos, Atoi(s)); break;
+                    WriteInt64(pos, (int64)Atof(s)); break;
 		        case S8_tid:
                     WriteByte(pos, Atoi(s)); break;
 		        case U16_tid:
                     WriteUShort(pos, Atoi(s)); break;
 		        case U32_tid:
-                    WriteUInt(pos, Atoi(s)); break;
+                    WriteUInt(pos, (uint)Atof(s)); break;
 		        case U64_tid:
-                    WriteUInt64(pos, Atoi(s)); break;
+                    //18446744073709551000 //9223300036854775000 //4294967288
+                    //Printf("%Lf\n", Atof(s));
+                    WriteUInt64(pos, (uint64)Atof(s + ".0")); break;
                 case F32_tid:
                     WriteFloat(pos, Atof(s)); break;
                 case String_tid:
@@ -2021,12 +2051,25 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                             r.data = 1;
                         } else if (s == "false") {
                             r.data = 0;
-                        } else r.data = Atoi(s);
-                    } else if (exists(r.ObjectIndex) || exists(r.data_As_Int) || exists(r.data_As_Float)) {
-                        if (exists(r.data_As_Int) || (exists(r.data) && r.data != 0 && detectedFloat(startof(r.data))) || find(s, "[.]") != -1) { 
-                            WriteFloat(r.varStart, Atof(s));
                         } else {
+                            (Abs(Atoi(s)) > 127) ?  r.showInt = false : r.showInt = true;
+                            r.data = Atoi(s);
+                        }
+                    } else if (exists(r.data) && r.elementSize == 2) {
+                        (Abs(Atoi(s)) > 32767) ?  r.showInt = false : r.showInt = true;
+                        r.data = Atoi(s);
+                    } else if (exists(r.ObjectIndex) || exists(r.data_As_Int) || exists(r.data_As_Float)) {
+                        if (exists(r.data_As_Int) || find(s, "[.]") != -1) {// || (exists(r.data) && r.data != 0 && detectedFloat(startof(r.data)))) { 
+                            WriteFloat(r.varStart, Atof(s));
+                            Printf("Writing as Float\n");
+                        } else if (s[1] == 0x2D || (Atoi(s) == (int64)Atof(s)))  {
                             WriteInt(r.varStart, Atoi(s));
+                            Printf("Writing as Int32\n");
+                            r.showInt = true;
+                        } else {
+                            Printf("Writing as Uint32\n");
+                            WriteUInt(r.varStart, (uint64)(Atof(s))); //4294967288
+                            r.showInt = false;
                         }
                     } else if (exists(r.size) || find((wstring)r.fieldDataType, "tring") != -1) {
         	            WriteRSZString(r, s);
@@ -2081,6 +2124,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
         if (findS(newString, " ") != -1) {
             newFieldType = SubStr(newString, 0, findS(newString, " "));
             newFieldName = SubStr(newString, findS(newString, " ")+1, -1);
+            
             switch (newFieldType) {
                 case "Byte": newFieldType = "S8"; break;
                 case "UByte": newFieldType = "U8"; break;
@@ -2370,7 +2414,7 @@ typedef struct(int64 atAddress, int64 addOffset, byte isAbsolute) {
         if (atAddress > -1)
             FSeek(atAddress); 
         if (isAbsolute == 0) {
-            uint64 strOffset;
+            uint64 strOffset <hidden=1>;
             FSeek(strOffset + addOffset);
         } else { //for BHVTNodes
             uint strOffset;
@@ -4089,6 +4133,20 @@ else {
             } else 
                 cycles = 1;
             sizeToAdd += gObjectSz * cycles;
+
+            /*local uint zeroesSize, zeroesPadding = 0, 0;
+            if (exists(BehaviorTree) && find(ReadRSZMagicName(RSZFile[lvl]), "Actions") != -1) {
+                zeroesSize = 4 * ctr;
+                Printf("%i\n", zeroesSize);
+                local uint zeroesPadding = (16 - (startof(BehaviorTree.zeroes) + sizeof(BehaviorTree.zeroes)) % 16) + (16 - zeroesSize % 16);
+                if (zeroesPadding >= 16)
+                    zeroesPadding -= 16;
+                Printf("%i, %i\n", zeroesSize, zeroesPadding);
+                //if (zeroesPadding)
+                //    InsertBytes(RSZOffset+addedSz, padding, 0);
+                if (zeroesSize > zeroesPadding)
+                    sizeToAdd += zeroesSize + 
+            }*/
             
             //calculate padding
             local uint padPt = (startof(RSZFile[lvl].InstanceInfos) + sizeof(RSZFile[lvl].InstanceInfos));
@@ -5091,7 +5149,7 @@ typedef struct {
                 InsertKey NewKey;
                 local uint expectedCRC = GetRSZClassCRC(typeId.Hash);
                 local ubyte isObject <hidden=true>;
-                if (expectedCRC != CRC) 
+                if (i && expectedCRC != CRC) 
                     Printf("Incorrect CRC for %s at %i\n", typeId.HashName, FTell()-4);
                 if (!i)
                     typeId.HashName = "NULL";
