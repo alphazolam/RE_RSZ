@@ -10,15 +10,16 @@
 //  ID Bytes: 
 //   History: August 11, 2022 -- Thanks to Darkness for adding the new "GetRSZClassCRC" function to RSZParser.dll
 //------------------------------------------------
-local int lv, r;
-for (lv=0; lv<level; lv++) {
-    r = 0;
-    while (exists(RSZFile[lv].InstanceInfos.instanceInfo[r])) {
-        if (RSZFile[lv].InstanceInfos.instanceInfo[r].CRC != RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC) {
-            Printf("Updating CRC for %s at %i from %u to %u\n", RSZFile[lv].InstanceInfos.instanceInfo[r].typeId.HashName, startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].CRC, RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC);
-            WriteUInt(startof(RSZFile[lv].InstanceInfos.instanceInfo[r].CRC), RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC);
+//return 0;
+local uint L, R;
+for (L=0; L<level; L++) {
+    R = 1;
+    while (exists(RSZFile[L].InstanceInfos.instanceInfo[R])) {
+        if (RSZFile[L].InstanceInfos.instanceInfo[R].CRC != RSZFile[L].InstanceInfos.instanceInfo[R].expectedCRC) {
+            Printf("Updating CRC for %s at %i from %u to %u\n", RSZFile[L].InstanceInfos.instanceInfo[R].typeId.HashName, startof(RSZFile[L].InstanceInfos.instanceInfo[R].CRC), RSZFile[L].InstanceInfos.instanceInfo[R].CRC, RSZFile[L].InstanceInfos.instanceInfo[R].expectedCRC);
+            WriteUInt(startof(RSZFile[L].InstanceInfos.instanceInfo[R])+4, RSZFile[L].InstanceInfos.instanceInfo[R].expectedCRC);
             //RSZFile[lv].InstanceInfos.instanceInfo[r].CRC = RSZFile[lv].InstanceInfos.instanceInfo[r].expectedCRC;
         }
-        r++;
+        R++;
     }
 }
