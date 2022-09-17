@@ -1723,12 +1723,12 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                                 s = "True";
                             else if (r.data == 0)
                                 s = "False";
-                            else if (r.showInt)
+                            else if (exists(r.showInt) && r.showInt)
                                 SPrintf(s, "%i", ReadByte(startof(r.data)));
                             else
                                 SPrintf(s, "%u", ReadUByte(startof(r.data)));
                         } else if (r.elementSize == 2) {
-                            if (r.showInt)
+                            if (exists(r.showInt) && r.showInt)
                                 SPrintf(s, "%i", ReadShort(startof(r.data)));
                             else
                                 SPrintf(s, "%u", ReadUShort(startof(r.data)));
@@ -1737,7 +1737,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                                 SPrintf(s, "%f", ReadFloat(startof(r.data)));
                             else if (Abs(r.data) > 1000000) 
                                 SPrintf(s, "%X", ReadInt(startof(r.data)));    
-                            else if (r.showInt)
+                            else if (exists(r.showInt) && r.showInt)
                                 SPrintf(s, "%i", ReadInt(startof(r.data)));
                             else
                                 SPrintf(s, "%u", ReadUInt(startof(r.data)));
@@ -1942,7 +1942,8 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         rsInfoPadding++;
                 FixOffsets(0, headerStrings[0], startof(r.size)+4, FileSize()+sizeToInsert, sizeToInsert, false);
                 FixRSZUserDataOffsets(startof(r.size)+4, sizeToInsert, 0, r.lvl); 
-                if (exists(rsInfoPadding) && rsInfoPadding > 0) {
+                if (exists(rsInfoPadding) && rsInfoPadding > 0 ) { //&& (rsInfoPadding + (sizeof(str) - rsInfoStringSz)) < 16
+                    //Printf("rsInfoPadding: %i %i\n", rsInfoPadding, rsInfoPadding + (sizeof(str) - rsInfoStringSz));
                     FixOffsets(0, startof(GameObjectInfos), startof(ResourceInfos) + sizeof(ResourceInfos), FileSize()+rsInfoPadding+(sizeof(str)-rsInfoStringSz), rsInfoPadding + (sizeof(str) - rsInfoStringSz), false);
                     FixOffsets(startof(GameObjectInfos)+sizeof(GameObjectInfos)-(sizeof(GameObjectInfos)==1), headerStrings[0], rsInfoStringStart+1, FileSize()+(sizeof(str)-rsInfoStringSz), (sizeof(str) - rsInfoStringSz), false); //rsInfoPadding +
                 }
@@ -1955,10 +1956,12 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
         
         if (exists(rsInfoStringStart) && rsInfoStringStart > 0) {
             Printf("Found old ResourceInfo\n");//, rsInfoStringStart, rsInfoStringSz, rsInfoPadding); //Start = %i, Size = %i, Padding = %i\n
-            if (rsInfoPadding > 0) 
-                InsertBytes(RSZOffset, rsInfoPadding, 0);
-            if (sizeof(str) > rsInfoStringSz)
-                InsertBytes(rsInfoStringStart, sizeof(str) - rsInfoStringSz, 0);
+            //if (rsInfoPadding + sizeof(str) - rsInfoStringSz < 16) {
+                if (rsInfoPadding > 0) 
+                    InsertBytes(RSZOffset, rsInfoPadding, 0);
+                if (sizeof(str) > rsInfoStringSz)
+                    InsertBytes(rsInfoStringStart, sizeof(str) - rsInfoStringSz, 0);
+            //}
             if (rsInfoStringSz > sizeof(str))
                 ForceWriteString(rsInfoStringStart, rsInfoStringSz, str); 
             else
@@ -2052,11 +2055,13 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         } else if (s == "false") {
                             r.data = 0;
                         } else {
-                            (Abs(Atoi(s)) > 127) ?  r.showInt = false : r.showInt = true;
+                            if (exists(r.showInt))
+                                (Abs(Atoi(s)) > 127) ?  r.showInt = false : r.showInt = true;
                             r.data = Atoi(s);
                         }
                     } else if (exists(r.data) && r.elementSize == 2) {
-                        (Abs(Atoi(s)) > 32767) ?  r.showInt = false : r.showInt = true;
+                        if (exists(r.showInt))
+                            (Abs(Atoi(s)) > 32767) ?  r.showInt = false : r.showInt = true;
                         r.data = Atoi(s);
                     } else if (exists(r.ObjectIndex) || exists(r.data_As_Int) || exists(r.data_As_Float)) {
                         if (exists(r.data_As_Int) || find(s, "[.]") != -1) {// || (exists(r.data) && r.data != 0 && detectedFloat(startof(r.data)))) { 
@@ -2065,11 +2070,11 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         } else if (s[1] == 0x2D || (Atoi(s) == (int64)Atof(s)))  {
                             WriteInt(r.varStart, Atoi(s));
                             Printf("Writing as Int32\n");
-                            r.showInt = true;
+                            if (exists(r.showInt)) r.showInt = true;
                         } else {
                             Printf("Writing as Uint32\n");
                             WriteUInt(r.varStart, (uint64)(Atof(s))); //4294967288
-                            r.showInt = false;
+                            if (exists(r.showInt)) r.showInt = false;
                         }
                     } else if (exists(r.size) || find((wstring)r.fieldDataType, "tring") != -1) {
         	            WriteRSZString(r, s);
@@ -2414,7 +2419,7 @@ typedef struct(int64 atAddress, int64 addOffset, byte isAbsolute) {
         if (atAddress > -1)
             FSeek(atAddress); 
         if (isAbsolute == 0) {
-            uint64 strOffset <hidden=1>;
+            uint64 strOffset;
             FSeek(strOffset + addOffset);
         } else { //for BHVTNodes
             uint strOffset;
