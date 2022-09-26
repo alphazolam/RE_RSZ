@@ -12,19 +12,20 @@
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                            //Effect:
-local string    RSZVersion       <hidden=true>        = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
-local int       RTVersion        <hidden=true>        = TRUE;                      //Use Ray-Tracing Update file formats for RE7, RE2R and RE3R (subject to AutoDetectGame)
-local int       Nesting          <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
-local int       ShowAlignment    <hidden=true>        = FALSE;                     //Show metadata for each variable
-local int       ShowChildRSZs    <hidden=true>        = FALSE;                     //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
-local int       UseSpacers       <hidden=true>        = TRUE;                      //Show blank rows between some structs
-local int       AutoDetectGame   <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
-local int       RedetectBHVT     <hidden=true>        = TRUE;                      //Will automatically redetect the next BHVT node if there is a problem 
-local int       HideRawData      <hidden=true>        = FALSE;                     //Hides RawData struct
-local int       HideRawNodes     <hidden=true>        = TRUE;                      //Hides RawNodes struct
-local int       SortRequestSets  <hidden=true>        = TRUE;                      //Sorts RCOL RequestSets by their IDs
-local int       ExposeUserDatas  <hidden=true>        = TRUE;                      //Makes RSZFiles that contain embedded userDatas start after the Userdatas, for ctrl+J jump
-local int       SeekByGameObject <hidden=true>        = FALSE;                     //Will automatically seek between detected GameObjects to fix reading errors
+local string    RSZVersion        <hidden=true>        = "MHRise";                  //change between RE2, RE3, RE8, DMC5 or MHRise
+local int       RTVersion         <hidden=true>        = TRUE;                      //Use Ray-Tracing Update file formats for RE7, RE2R and RE3R (subject to AutoDetectGame)
+local int       Nesting           <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
+local int       ShowAlignment     <hidden=true>        = FALSE;                     //Show metadata for each variable
+local int       ShowChildRSZs     <hidden=true>        = FALSE;                     //Show all RSZs one after another, non-nested. Disabling hides nested RSZHeaders
+local int       UseSpacers        <hidden=true>        = TRUE;                      //Show blank rows between some structs
+local int       AutoDetectGame    <hidden=true>        = TRUE;                      //Automatically detect RSZVersion based on the name + ext of the file being viewed
+local int       RedetectBHVT      <hidden=true>        = TRUE;                      //Will automatically redetect the next BHVT node if there is a problem 
+local int       HideRawData       <hidden=true>        = FALSE;                     //Hides RawData struct
+local int       HideRawNodes      <hidden=true>        = TRUE;                      //Hides RawNodes struct
+local int       SortRequestSets   <hidden=true>        = TRUE;                      //Sorts RCOL RequestSets by their IDs
+local int       ExposeUserDatas   <hidden=true>        = TRUE;                      //Makes RSZFiles that contain embedded userDatas start after the Userdatas, for ctrl+J jump
+local int       SeekByGameObject  <hidden=true>        = FALSE;                     //Will automatically seek between detected GameObjects to fix reading errors
+local int       ReadNodeFullNames <hidden=true>        = TRUE;                      //Reads FSM Node names with the names of all their parents (may be taxing)
 
 //Path to Noesis.exe
 local wstring NoesisPath <hidden=true> =              "C:\\Program Files\\noesis\\Noesis.exe";
@@ -1580,7 +1581,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 				break;
 		}
         if (BHVTStart != -1 && exists(data) && sizeof(data) == 4) { 
-            local uint BHVTStructID = idx;
+            local uint BHVTStructID <hidden=true> = idx;
             local uint z <hidden=true>, pos <hidden=true> = FTell();
             local string RSZMagicName = ReadRSZMagicName(RSZFile[lvl]);
             
@@ -2582,7 +2583,7 @@ typedef struct {
     struct StringRead name(-2, UVARStart, false);
     uint64 dataOffset;
     FSkip(8);
-    ushort uknCount;
+    ushort index;
     ushort valueCount;
     ushort uknCount;
     ushort uknCount;
@@ -2592,6 +2593,9 @@ typedef struct {
             UVAR_VALUE Value;
         }
     
+    if (exists(logicNodesCount) && (name.String=="LogicNode" || name.String=="CompareNode" || name.String=="NotNode"))
+        logicNodesCount++;
+
     if (exists(Value.value)) {
         if (sizeof(Value.value)==16 && name.String == "VariableReferenceNode") {
             struct {
@@ -2627,13 +2631,25 @@ typedef struct {
     string ReadUVAR_NODE (UVAR_NODE &input) { if (exists(input.Value)) return ReadUVAR_VALUE(input.Value[0]); return ""; }
 
 typedef struct {
-    ushort ukn, ukn, ukn, ukn, ukn, ukn, ukn, ukn;
-} OFFSET2_DATA;
+    ushort idx;
+    ushort ukn, ukn, ukn, ukn, ukn, ukn, ukn;
+} OFFSET2_DATA <read=ReadOFFSET2_DATA>;
+
+string ReadOFFSET2_DATA(OFFSET2_DATA &o) {
+    if (exists(parentof(o).Node[o.idx])) {
+        local string s;
+        SPrintf(s, "%s[%i]", ReadUVAR_NODENAME(parentof(o).Node[o.idx]), o.idx);
+        return  s;
+    }
+    return "";
+}
 
 typedef struct {
     uint64 nodesOffset;
     uint64 offset2;
     ushort propCount, ukn00, ukn01; //skipToNextLine();
+    local ubyte logicNodesCount = 0;
+    
     if (propCount > 0) {
         if (nodesOffset > 0) {
             FSeek(UVARStart + nodesOffset);
@@ -2644,9 +2660,10 @@ typedef struct {
         }
         if (offset2 > 0 && UVARStart + offset2 + 16 <= FileSize()) {
             FSeek(UVARStart + offset2);
-            struct OFFSET2_DATA Unknown;
-            while (FTell()+8 <= FileSize() && (ReadUInt64(FTell()) > FileSize() || ReadUInt64(FTell()+8) > FileSize()) && ReadByte(FTell()+2) == 0)
-                struct OFFSET2_DATA Unknown;
+            //struct OFFSET2_DATA Unknown;
+            //while (FTell()+8 <= FileSize() && (ReadUInt64(FTell()) > FileSize() || ReadUInt64(FTell()+8) > FileSize()) && ReadByte(FTell()+2) == 0)
+            for (o=0; o<logicNodesCount; o++)
+                struct OFFSET2_DATA OrderOfOperations;
         }
     }
     checkUseSpacers();
@@ -2993,7 +3010,6 @@ typedef enum {
     id_BHVT = 1414940738,
     id_uvar = 1918989941
 } MAGIC;
-
 
 //Start of reading File =====================================================================================================================================
 FSeek(0);
@@ -3397,6 +3413,7 @@ else {
             local uint32 NodeCounter <hidden=true>;
             
             struct RAWNODES { 
+                
                 typedef struct {
                     local uint32 index <hidden=true>;
                     local uint mm <hidden=true>;
@@ -3413,12 +3430,16 @@ else {
                     struct BHVTHash ID(id_All, ""); 
                     struct BHVTHash exID(id_All, "");
                     StringRead Name(-1, 4+BHVTStart+Header.BHVT.stringOffset, -1); //startof(Header.BHVT)
-                    if (!exists(ID) || ID.hash != ReadInt())
+
+                    if (!exists(ID) || ID.hash != ReadInt()) {
                         struct BHVTHash Parent(id_All, "");
-                    else 
+                    } else 
                         int Parent;
                     struct BHVTHash ParentEx(id_All, "");
-                    
+                    local wstring fullName <hidden=true>;// = GetFullParentsNodeName(this, 0);
+                    if (finished) 
+                        fullName = GetFullParentsNodeName(this, 0);
+
                     if (ReadInt() > 0) {
                         struct nChildContainer {
                             struct BHVTCount ChildCount(3);
@@ -3642,14 +3663,13 @@ else {
                         if (exists(NodeCounter))
                             NodeCounter++;
                     }
-                } BHVTNode <name=ReadBHVTNodeName, read=ReadBHVTNode, optimize=false, open=suppress>;
+                } BHVTNode <name=ReadBHVTNodeName, read=ReadBHVTNodeFullName, optimize=false, open=suppress>;
                 
-                local uint maxDivs <hidden=true> = NodeCount / 100 + 1;
-                local uint waypoints[maxDivs] <hidden=true>; 
-                local uint divCounter <hidden=true>;
+                local uint maxDivs <hidden=false> = NodeCount / 100 + 1;
+                local uint waypoints[maxDivs] <hidden=false>; 
+                local uint divCounter <hidden=false>;
                 
                 for (n=0; n<NodeCount; n++) { //divides list up into 100 node intervals
-                    
                     if (n == 100 * divCounter) {
                         waypoints[divCounter] = FTell();
                         divCounter++;
@@ -3664,6 +3684,13 @@ else {
                 struct RAWNODES RawNodes <hidden=true, open=suppress>;
             else struct RAWNODES RawNodes <open=suppress>;
             
+            n=0;
+            while(!finished && exists(RawNodes.Node[n])) {
+                RawNodes.Node[n].fullName = GetFullParentsNodeName(RawNodes.Node[n], 0);
+                n++;
+            }
+
+
             struct {
                 uint32 ActionsObjectTableCount;
                 if (ActionsObjectTableCount && ActionsObjectTableCount * 4 + FTell() < FileSize())
@@ -3689,9 +3716,10 @@ else {
             }
             return "Node";
         }
-        
+
         //This fn allows the nodes list to be scanned much more quickly by the reader function, dividing it up into 10ths:
         int getBHVTWaypointIndex(uint32 tell) { 
+            if (BehaviorTree.RawNodes.divCounter == 1) return 0;
             local ushort div = BehaviorTree.RawNodes.divCounter-1;
             while (tell < BehaviorTree.RawNodes.waypoints[div / 2])
                 div = div / 2;
@@ -3716,19 +3744,66 @@ else {
         }
         
         wstring ReadBHVTNode(BHVTNode &b) { 
-            local string s;
             if (exists(b.Name.String)) {
                 SPrintf(s, " [%i]", b.index);  
                 return b.Name.String + s;
-            } else {
-                local ushort z;
-                for (z=getBHVTWaypointIndex(startof(b)); z<BehaviorTree.NodeCount; z++)
-                    if (startof(b) == startof(BehaviorTree.RawNodes.Node[z])) {
-                        SPrintf(s, " [%i]", z);
-                        return BehaviorTree.RawNodes.Node[z].Name.String + s;
-                    }
             }
-            return s;
+            local ushort z;
+            for (z=getBHVTWaypointIndex(startof(b)); z<BehaviorTree.NodeCount; z++)
+                if (startof(b) == startof(BehaviorTree.RawNodes.Node[z])) {
+                    SPrintf(s, " [%i]", z);
+                    return BehaviorTree.RawNodes.Node[z].Name.String + s;
+                }
+            return "";
+        }
+
+        wstring ReadBHVTNodeInternal(BHVTNode &b) {
+            if (exists(b.Name.String)) return b.Name.String;
+            local ushort z;
+            for (z=getBHVTWaypointIndex(startof(b)); z<BehaviorTree.NodeCount; z++)
+                if (startof(b) == startof(BehaviorTree.RawNodes.Node[z]))
+                    return BehaviorTree.RawNodes.Node[z].Name.String;
+            return "";
+        }
+
+        wstring ReadBHVTNodeFullName(BHVTNode &b) {
+            if (exists(b.fullName) && b.fullName != "") {
+                SPrintf(s, " [%i]", b.index);
+                return b.fullName + s;
+            }
+            local ushort z;
+            for (z=getBHVTWaypointIndex(startof(b)); z<BehaviorTree.NodeCount; z++) 
+                if (startof(BehaviorTree.RawNodes.Node[z]) == startof(b)) {
+                    SPrintf(s, " [%i]", BehaviorTree.RawNodes.Node[z].index);
+                    return BehaviorTree.RawNodes.Node[z].fullName + s;
+                }
+            return "";
+        }
+
+        wstring ReadBHVTNodeFullNameInternal(BHVTNode &b) {
+            if (exists(b.fullName) && b.fullName != "")
+                return b.fullName;
+            local ushort z;
+            for (z=getBHVTWaypointIndex(startof(b)); z<BehaviorTree.NodeCount; z++) 
+                if (startof(BehaviorTree.RawNodes.Node[z]) == startof(b)) {
+                    return BehaviorTree.RawNodes.Node[z].fullName;
+                }
+            return "";
+        }
+        
+        wstring GetFullParentsNodeName(BHVTNode &b, ushort loop) {
+            local wstring fullName = ReadBHVTNodeInternal(b);
+            if (!ReadNodeFullNames) 
+                return fullName;
+            local ushort z;
+            local uint parentHash = ReadUInt(startof(b)+12);
+            if (parentHash != 0)
+                while(exists(BehaviorTree.RawNodes.Node[z])) {
+                    if (parentHash == ReadUInt(startof(BehaviorTree.RawNodes.Node[z])))
+                        return ReadBHVTNodeFullNameInternal(BehaviorTree.RawNodes.Node[z]) + "." + fullName;
+                    z++;
+                }
+            return fullName;
         }
 
         string ReadBHVTNodeNameWithVarName(BHVTNode &b, string varName) { 
@@ -5766,19 +5841,19 @@ typedef struct(BHVTlvl lv, string Name) {
 
     wstring ReadBHVTHash(BHVTHash &h) { 
         if (exists(h.Node)) 
-            return ReadBHVTNode(h.Node); 
+            return ReadBHVTNodeFullName(h.Node); 
         if (exists(h.RSZ)) 
             return ReadRSZInstanceName(h.RSZ); 
         if (exists(h.Path))
             return ReadStringRead(h.Path);
-        string s; 
+        local string s; 
         if (Abs(h.hash) > 9999)
             SPrintf(s, "%Xh", h.hash);
         else 
             SPrintf(s, "%i", h.hash);
         return s; 
-    } 
-
+    }
+    
     string ReadBHVTHashName(BHVTHash &h) { 
         if (h.Name != "" && h.Type != id_All) 
             return h.Name + " [" + StrDel(EnumToString(h.Type), 0, 3) + "]"; 
