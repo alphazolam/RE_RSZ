@@ -31,15 +31,16 @@ local int       ReadNodeFullNames <hidden=true>        = TRUE;                  
 local wstring NoesisPath <hidden=true> =              "C:\\Program Files\\noesis\\Noesis.exe";
 
 //Game							                      //Extracted Path
-local wstring DMC5Path <hidden=true>   =              "F:\\modmanager\\REtool\\DMC_chunk_000\\natives\\x64\\";
-local wstring RE2Path <hidden=true>    =              "F:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
-local wstring RE3Path <hidden=true>    =              "F:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
-local wstring RE7Path <hidden=true>    =              "F:\\modmanager\\REtool\\RE7_chunk_000\\natives\\x64\\";
-local wstring RE8Path <hidden=true>    =              "F:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
-local wstring MHRPath <hidden=true>    =              "F:\\modmanager\\REtool\\MHR_chunk_000\\natives\\stm\\";
-local wstring RE2RTPath <hidden=true>  =              "F:\\modmanager\\REtool\\RE2RT_chunk_000\\natives\\stm\\";
-local wstring RE3RTPath <hidden=true>  =              "F:\\modmanager\\REtool\\RE3RT_chunk_000\\natives\\stm\\";
-local wstring RE7RTPath <hidden=true>  =              "F:\\modmanager\\REtool\\RE7RT_chunk_000\\natives\\stm\\";
+local wstring DMC5Path <hidden=true>     =              "F:\\modmanager\\REtool\\DMC_chunk_000\\natives\\x64\\";
+local wstring RE2Path <hidden=true>      =              "F:\\modmanager\\REtool\\RE2_chunk_000\\natives\\x64\\";
+local wstring RE3Path <hidden=true>      =              "F:\\modmanager\\REtool\\RE3_chunk_000\\natives\\stm\\";
+local wstring RE7Path <hidden=true>      =              "F:\\modmanager\\REtool\\RE7_chunk_000\\natives\\x64\\";
+local wstring RE8Path <hidden=true>      =              "F:\\modmanager\\REtool\\RE8_chunk_000\\natives\\stm\\";
+local wstring MHRPath <hidden=true>      =              "F:\\modmanager\\REtool\\MHR_chunk_000\\natives\\stm\\";
+local wstring RE2RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE2RT_chunk_000\\natives\\stm\\";
+local wstring RE3RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE3RT_chunk_000\\natives\\stm\\";
+local wstring RE7RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE7RT_chunk_000\\natives\\stm\\";
+local wstring SF6Path <hidden=true>      =              "F:\\modmanager\\REtool\\SF6Beta_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -116,10 +117,15 @@ if (AutoDetectGame) {
     o = 0;
     local string xFmt <hidden=true> = "x64\\";
 
-    if (find(dir, "dmc") != -1 || find(dir, "evil may") != -1) {
+    if (find(dir, "dmc5") != -1 || find(dir, "dmc 5") != -1 || find(dir, "evil may") != -1) {
 	    RSZVersion = "DMC5"; o = 1;
 	    extractedDir = DMC5Path;
         Printf("Detected DMC in filepath\n");
+    } else if (find(dir, "sf6") != -1 || find(dir, "reet ?[Ff]ighter") != -1) {
+	    RSZVersion = "SF6"; o = 1;
+	    extractedDir = SF6Path;
+        xFmt = "stm\\";
+        Printf("Detected SF6 in filepath\n");
     } else if (find(dir, "re2") != -1 || find(dir, "evil 2") != -1) {
         RSZVersion = "RE2"; o = 1;
         if (RTVersion) {
@@ -180,9 +186,9 @@ ParseJson(JsonPath);
 if ( RSZOffset > -1 && AutoDetectGame && !(RSZVersion == "RE7" && !RTVersion))
     AutoDetectVersion();
 
-local string VisibleRSZVersion <name="Game Version"> = RSZVersion;
+local string GameVersion = RSZVersion;
 if (RTVersion)
-    local int VisibleRT <name="Ray Tracing Version"> = RTVersion;
+    local int IsRayTracing = RTVersion;
 
 //============================
 //Special functions & structs:
