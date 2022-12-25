@@ -763,7 +763,7 @@ typedef struct {
         local char s[37];
         SPrintf(s, 
             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x", 
-            uuid[0], uuid[1], uuid[2], uuid[3], uuid[4], uuid[5], uuid[6], uuid[7],
+            uuid[3], uuid[2], uuid[1], uuid[0], uuid[5], uuid[4], uuid[7], uuid[6],
             uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
         );
         return s;
@@ -778,13 +778,18 @@ typedef struct {
 
     void WriterGuid (rGUID &g, string s) {
         local string out;
-        local byte ii, offset, var;
+        local byte ii, offset;
+        local uchar uuid[16];
         for (ii=0; ii<16; ii++) {
-            if (ii==4 || ii== 6 || ii==8 || ii==10) 
+            if (ii==4 || ii== 6 || ii==8 || ii==10)
                 offset++;
-            SScanf(SubStr(s, ii*2 + offset, 2), "%x", var);
-            WriteByte(startof(g) + ii, var);
+            SScanf(SubStr(s, ii*2 + offset, 2), "%x", uuid[ii]);
         }
+        local uchar uuid_le[16] = {
+            uuid[3], uuid[2], uuid[1], uuid[0], uuid[5], uuid[4], uuid[7], uuid[6],
+            uuid[8], uuid[9], uuid[10], uuid[11], uuid[12], uuid[13], uuid[14], uuid[15]
+        };
+        WriteBytes(uuid_le, startof(g), 16);
     }
 
 //functions for opening files:
