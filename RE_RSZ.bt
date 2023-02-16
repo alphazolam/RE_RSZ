@@ -4,12 +4,12 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.77
+//   Version: 0.78
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
 //  ID Bytes: 
-//   History: December 28th, 2022
+//   History: February 16, 2022
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                             //Effect:
@@ -60,8 +60,8 @@ uint64  GetFieldType(uint32 classHash, uint32 fieldIndex);
 ubyte   IsFieldNative(uint32 classHash, uint32 fieldIndex);
 #endlink
 
-#include "enums.hpp"
-#include "TagsCollection.bt"
+#include "Enums.btx" //'btx' is a made up extension for extra template files, to not confuse them with main templates
+#include "TagsCollection.btx"
 
 //Local variables:
 local int i <hidden=true>, j <hidden=true>, k <hidden=true>, m <hidden=true>, n <hidden=true>, o <hidden=true>, h <hidden=true>, temp <hidden=true>,
@@ -204,6 +204,9 @@ RTVersion = (RSZVersion=="RE2" || RSZVersion=="RE7" || RSZVersion=="RE3") * RTVe
 local string GameVersion = RSZVersion;
 if (RTVersion)
     local int IsRayTracing = RTVersion;
+
+if (RSZVersion=="SF6" && ReadUInt(4) == id_fchr)
+    #include "SF6_fchar.btx";
 
 //============================
 //Special functions & structs:
@@ -1392,7 +1395,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     //FSkip(-4); int data <hidden=true>;
                 }
                 if (exists(ObjectIndex) && ObjectIndex > 0)
-                    if (fieldType == UserData_tid) {
+                    if (fieldType == UserData_tid && (RSZVersion != "RE7" || RTVersion)) {
                         if ((!RTVersion && RSZVersion == "RE2") || RSZVersion == "DMC5") { 
                             if ((!exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex]) || !exists(RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx) || RSZFile[lvl].Data.RawData.RSZ[ObjectIndex].userDataIdx == -1)) {
                                 if (finished) Printf("Broken UserData at %i\n", FTell()); 
@@ -1731,6 +1734,11 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
             }
         }
     }
+
+    if (exists(actionIDsTbl) && Header.magic == id_fchr && RSZVersion == "SF6" && fieldType == S32_tid && findS(fieldName, "Action") != -1) { 
+        local string moveName = readMoveName(data);
+        title = moveName;
+    }
     
     if (exists(ResourceInfos) && exists(data) && (fieldType == String_tid || fieldDataType == "String") && find((wstring)data, "/") != -1 
     && FileNameGetExtension(data) != "" && FileNameGetExtension(data) != ".json") {
@@ -2048,16 +2056,16 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 FixBHVTOffsets(sizeToInsert, startof(r)+4);
             } else {
                 FixRCOLOffsets(sizeToInsert, startof(r)+4, FileSize()+sizeToInsert);
-                if (exists(rsInfoStringSz) && rsInfoStringSz > 0 && rsInfoStringSz < sizeof(str))
-                    while ((rsInfoStringStart + sizeof(str) + rsInfoPadding) % 16 != (rsInfoStringStart + rsInfoStringSz) % 16)
-                        rsInfoPadding++;
+                //if (exists(rsInfoStringSz) && rsInfoStringSz > 0 && rsInfoStringSz < sizeof(str))
+                //    while ((rsInfoStringStart + sizeof(str) + rsInfoPadding) % 16 != (rsInfoStringStart + rsInfoStringSz) % 16)
+                //        rsInfoPadding++;
                 FixOffsets(0, headerStrings[0], startof(r.size)+4, FileSize()+sizeToInsert, sizeToInsert, false);
                 FixRSZUserDataOffsets(startof(r.size)+4, sizeToInsert, 0, r.lvl); 
-                if (exists(rsInfoPadding) && rsInfoPadding > 0 ) { //&& (rsInfoPadding + (sizeof(str) - rsInfoStringSz)) < 16
+                /*if (exists(rsInfoPadding) && rsInfoPadding > 0 ) { //&& (rsInfoPadding + (sizeof(str) - rsInfoStringSz)) < 16
                     //Printf("rsInfoPadding: %i %i\n", rsInfoPadding, rsInfoPadding + (sizeof(str) - rsInfoStringSz));
                     FixOffsets(0, startof(GameObjectInfos), startof(ResourceInfos) + sizeof(ResourceInfos), FileSize()+rsInfoPadding+(sizeof(str)-rsInfoStringSz), rsInfoPadding + (sizeof(str) - rsInfoStringSz), false);
                     FixOffsets(startof(GameObjectInfos)+sizeof(GameObjectInfos)-(sizeof(GameObjectInfos)==1), headerStrings[0], rsInfoStringStart+1, FileSize()+(sizeof(str)-rsInfoStringSz), (sizeof(str) - rsInfoStringSz), false); //rsInfoPadding +
-                }
+                }*/
             }
             InsertBytes(startof(r.size)+4, sizeToInsert, 0); 
             r.size += sizeToInsert / 2;
@@ -2067,7 +2075,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
         
         if (exists(rsInfoStringStart) && rsInfoStringStart > 0) {
             Printf("Found old ResourceInfo\n");//, rsInfoStringStart, rsInfoStringSz, rsInfoPadding); //Start = %i, Size = %i, Padding = %i\n
-            //if (rsInfoPadding + sizeof(str) - rsInfoStringSz < 16) {
+            /*//if (rsInfoPadding + sizeof(str) - rsInfoStringSz < 16) {
                 if (rsInfoPadding > 0) 
                     InsertBytes(RSZOffset, rsInfoPadding, 0);
                 if (sizeof(str) > rsInfoStringSz)
@@ -2076,10 +2084,11 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
             if (rsInfoStringSz > sizeof(str))
                 ForceWriteString(rsInfoStringStart, rsInfoStringSz, str); 
             else
-                ForceWriteString(rsInfoStringStart, sizeof(str), str);
-            
+                ForceWriteString(rsInfoStringStart, sizeof(str), str);*/
+            //if (rsInfoStringSz <= sizeof(str))
+            //    ForceWriteString(rsInfoStringStart, sizeof(str), str);
         }
-
+        //local int asdf = ffff;
         if (oldFileSize != FileSize())
             ShowRefreshMessage("");
     }
@@ -2089,6 +2098,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
             FileOpener(r.fullPath);
         } else {
             local int pos = r.varStart;
+            
             //local string ss;
             switch (r.fieldType) {
                 case Bool_tid:
@@ -2097,11 +2107,11 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     WriteShort(pos, Atoi(s)); break;
 		        case Object_tid:
 		        case UserData_tid:
-                    if (s == " " && exists(r.RSZ))
+                    if (exists(r.RSZ) && ((s == " ") || (s != "0" && Atoi(s) == 0)) )
                         WriteRSZInstance(r.RSZ, s);
                     else if (s == " " && exists(r.path))
                         WriteStringRead(r.path, (string)s);
-                    else
+                    else// if ()
                         WriteInt(pos, Atoi(s));
                     break;
                 case Size_tid:
@@ -3181,28 +3191,38 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
 
         if (magic == id_RCOL) {
             MAGIC signature;
-            int numGroups;
-            int numShapes;
-            int numUserData;
-            int numRequestSets;
-            uint maxRequestSetId;
+            if (!RTVersion && RSZVersion == "RE7") {
+                short numGroups;
+                short numShapes;
+                short numUserData;
+                short numRequestSets;
+                //uint maxRequestSetId;
+            } else {
+                int numGroups;
+                int numShapes;
+                int numUserData;
+                int numRequestSets;
+                uint maxRequestSetId;
 
-            if ((!RTVersion && (RSZVersion == "RE2" || RSZVersion == "RE7" || RSZVersion == "DMC5" || RSZVersion == "RE3")) == false) { //|| RSZVersion == "RE8" || isOldRE3 ||
-                int numIgnoreTags;
-                int numAutoGenerateJoints;
+
+                if ((!RTVersion && (RSZVersion == "RE2" || RSZVersion == "RE7" || RSZVersion == "DMC5" || RSZVersion == "RE3")) == false) { //|| RSZVersion == "RE8" || isOldRE3 ||
+                    int numIgnoreTags;
+                    int numAutoGenerateJoints;
+                }
+    
+                uint userDataSize <read=readRCOLWarning>;
+                uint status;
+                if (!RTVersion && RSZVersion == "RE3") {
+                    uint64 uknA; 
+                    uint64 uknB; 
+                }
+                
+                if (FileNameGetExtension(filename) == ".20") {
+                    uint32 ukn;
+                    uint32 ukn;
+                }
             }
 
-            uint userDataSize <read=readRCOLWarning>;
-            uint status;
-            if (!RTVersion && RSZVersion == "RE3") {
-                uint64 uknA; 
-                uint64 uknB; 
-            }
-            
-            if (FileNameGetExtension(filename) == ".20") {
-                uint32 ukn;
-                uint32 ukn;
-            }
             uint64 groupsPtrTbl;
             uint64 dataOffset <name="userDataStreamPtr">;
             uint64 requestSetTbl; 
@@ -6075,6 +6095,16 @@ if (RSZOffset > -1) {
                 } else 
                     struct RSZMagic RSZFile;
             }
+            
+            //setup ActionIDs to Names array
+            if (Header.magic == id_fchr && !exists(actionIDsTbl) && ReadRSZMagicName(RSZFile) == "CharacterAsset.Trigger") {
+                local uint moveCount = RSZFile.RSZHeader.objectCount; //ReadUInt(ReadUInt64(Header.DataListTblOffsOffs) + 24);
+                local uint actionIDsTbl[moveCount];
+                for (i=0; i<moveCount; i++) {
+                    actionIDsTbl[i] = RSZFile.Data.RawData.RSZ[ RSZFile.ObjectTable[i] ].var[5].data;
+                }
+            }
+
             level++;
             FSeek(startof(RSZFile.RSZHeader) + 4);
         } else 
@@ -6421,7 +6451,34 @@ if (ReadUInt(0) == id_RCOL) {
     }
 
 //FCHAR only=======================================================
+string readMoveName(uint actionID) {
+    if (isRyu) 
+        local Ryu ENUM = actionID;
+    else if (isLuke) 
+        local Luke ENUM = actionID;
+    else if (isKim) 
+        local Kimberly ENUM = actionID;
+    else if (isChun) 
+        local ChunLi ENUM = actionID;
+    else if (isKen) 
+        local Ken ENUM = actionID;
+    else if (isJuri) 
+        local Juri ENUM = actionID;
+    else if (isGuile) 
+        local Guile ENUM = actionID;
+    else if (isJamie) 
+        local Jamie ENUM = actionID;
+    else
+        return "";
+    return EnumToString(ENUM);
+}
+
+//string ReadPossibleAction(int )
+
 if (ReadUInt(4)==id_fchr) {
+    
+
+
     FSeek(FileSize()-1);
     BLANK ___fchr;
 
@@ -6509,7 +6566,7 @@ typedef struct {
         struct ACTION Action[objectCount] <optimize=false>;
     FSeek(startof(dataStartOffs)+8);
 } ACTION;*/
-    
+
     FSeek(Header.stringsObjectsOffs);
     struct {
         local uint actionListCt  <hidden=true> = ReadUInt64(ReadUInt64(ReadUInt64(Header.actionListTblOffsOffs))+24);
@@ -6564,10 +6621,10 @@ typedef struct {
                         uint actionCount;
                         uint objectCount;
                         struct fFighterActionData {
-                            int ukn; //keyCount;
-                            int ukn; //actionDataCount;
-                            int ukn; //actionID;
-                            int ukn; //frames;
+                            int ukn <name=readMoveName>; //keyCount;
+                            int ukn <name=readMoveName>; //actionDataCount;
+                            int ukn <name=readMoveName>; //actionID;
+                            int ukn <name=readMoveName>; //frames;
                         } ActionData;
                         FSeek(startof(this)+8);
                     } ActionListInfo <name="[ActionListInfo]">;
@@ -6623,7 +6680,7 @@ typedef struct {
             } DataID;*/
         }
     } DataIdTable;
-
+    
     FSeek(Header.DataListTblOffsOffs);
     struct {
         for (i=0; i<Header.dataCount;i++) {
@@ -6640,8 +6697,14 @@ typedef struct {
                     FSeek(DataListInfo.dataStartOffs);
                     if (DataListInfo.dataCount)
                         struct {
+                            //local uint dataCount = DataListInfo.dataCount;
                             for (j=0; j<DataListInfo.dataCount;j++) {
                                 struct fDataListId {
+                                    
+                                    if (exists(DataListInfo.dataCount) && DataListInfo.dataCount == moveCount && exists(actionIDsTbl[j])) {
+                                        local string name <hidden=true> = readMoveName(actionIDsTbl[j]);
+                                    }
+
                                     local uint dID <hidden=true> = ReadUInt();
                                     if (exists(ActionListTable.ActionList[dID])) {
                                         FSeek(startof(ActionListTable.ActionList[dID]));
@@ -6690,6 +6753,10 @@ string ReadfDataList(fDataList &d) {
 }
 
 string ReadfDataListId(fDataListId &d) {
+    
+    if (exists(d.name))
+        return d.name;
+
     if (exists(d.ActionList))
         return ReadfActionList(d.ActionList);
     return "ERROR";
