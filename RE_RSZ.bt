@@ -1466,8 +1466,8 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 				break;
 			case Size_tid:
 				fieldDataType = "Size";
-				if (FTell()+4 <= FileSize())
-				    uint data;
+				if (FTell()+8 <= FileSize())
+				    float data <name="float W">, data <name="float H">;
 				break;
 			case U16_tid:
 				fieldDataType = "UShort";
@@ -1901,7 +1901,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 		        case U64_tid:
 		        case Size_tid:
                     if (exists(r.data))
-                        SPrintf(s, "%Lu", r.data);
+                        SPrintf(s, "%g, %g", r.data[0], r.data[1]);
                     break;
                 case F32_tid:
                     if (exists(r.data))
@@ -2120,7 +2120,6 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     else// if ()
                         WriteInt(pos, Atoi(s));
                     break;
-                case Size_tid:
 		        case S32_tid:
                     WriteInt(pos, Atoi(s)); break;
 		        case S64_tid:
@@ -2151,6 +2150,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 case Resource_tid:
                     WriteRSZString(r, s);
                     break;
+                case Size_tid:
                 case Vec2_tid:
                 case Range_tid:
                 case Float2_tid:
