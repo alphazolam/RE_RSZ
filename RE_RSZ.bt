@@ -4,12 +4,12 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.8
+//   Version: 0.81
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
 //  ID Bytes: 
-//   History: March 30, 2023
+//   History: June 13, 2023
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                             //Effect:
@@ -43,6 +43,7 @@ local wstring RE2RTPath <hidden=true>    =              "F:\\modmanager\\REtool\
 local wstring RE3RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE3RT_chunk_000\\natives\\stm\\";
 local wstring RE7RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE7RT_chunk_000\\natives\\stm\\";
 local wstring SF6Path <hidden=true>      =              "F:\\modmanager\\REtool\\SF6Beta_chunk_000\\natives\\stm\\";
+local wstring GTrickPath <hidden=true>      =               "F:\\modmanager\\REtool\\GT_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -184,6 +185,11 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(MHRPath);
 	    xFmt = "stm\\";
         Printf("Detected MHRise in filepath\n");
+    } else if (find(dir, "\\gt") != -1 || find(dir, "host ?tr") != -1 || find(dir, "trick") != -1) {
+	    RSZVersion = "GTrick"; o = 1;
+	    extractedDir = Lower(GTrickPath);
+	    xFmt = "stm\\";
+        Printf("Detected Ghost Trick in filepath\n");
     } 
 	Local_Directory += xFmt;
 
@@ -199,6 +205,9 @@ Local_Directory = Lower(Local_Directory);
 local string JsonPath <hidden=true> = Lower(FileNameGetPath(GetTemplateFileName()) + "rsz" + RSZVersion); 
 if (RTVersion && (RSZVersion=="RE2" || RSZVersion=="RE7" || RSZVersion=="RE3"))
     JsonPath = JsonPath + "rt";
+if (RSZVersion=="SF6" && find(dir, "beta") != -1)
+    JsonPath = JsonPath + "beta"; 
+
 JsonPath = JsonPath + ".json";
 ParseJson(JsonPath);
 
@@ -6411,11 +6420,19 @@ if (ReadUInt(0) == id_RCOL) {
                         int GroupIndex;
                         int ShapeOffset;
                         uint status;
-                        StringRead Name(-1, 0, 0);
-                        uint NameHash <format=hex>;
-                        FSkip(4);
-                        StringRead KeyName(-1, 0, 0);
-                        uint KeyHash <format=hex>;
+                        if (RSZVersion == "RE4") {
+                            uint uknA, uknB;
+                            StringRead Name(-1, 0, 0);
+                            StringRead KeyName(-1, 0, 0);
+                            uint KeyHash <format=hex>;
+                            uint KeyHash2 <format=hex>;
+                        } else {
+                            StringRead Name(-1, 0, 0);
+                            uint NameHash <format=hex>;
+                            FSkip(4);
+                            StringRead KeyName(-1, 0, 0);
+                            uint KeyHash <format=hex>;
+                        }
                     } RequestSetInfo <name="[RequestSetInfo]", read=readRequestSetInfoCombinedKey>;
                     local ushort ObjectIndex <hidden=true> = RSZFile.ObjectTable[RequestSetInfo.Index];
                     FSeek(startof(Groups.Group[RequestSetInfo.GroupIndex]));
@@ -6445,7 +6462,7 @@ if (ReadUInt(0) == id_RCOL) {
 
     wstring ReadGroup(RcolGroup &g) { return ReadWString(ReadUInt64(startof(g)+16)); }
 
-    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16)); }
+    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16+(8*(RSZVersion=="RE4")))); }
 
     wstring ReadRequestSetName(RcolRequestSet &a) { string s; SPrintf(s, "RequestSet ID: %u  ", ReadUInt(startof(a))); return s; }
 
