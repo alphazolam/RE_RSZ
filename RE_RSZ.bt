@@ -43,7 +43,8 @@ local wstring RE2RTPath <hidden=true>    =              "F:\\modmanager\\REtool\
 local wstring RE3RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE3RT_chunk_000\\natives\\stm\\";
 local wstring RE7RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE7RT_chunk_000\\natives\\stm\\";
 local wstring SF6Path <hidden=true>      =              "F:\\modmanager\\REtool\\SF6Beta_chunk_000\\natives\\stm\\";
-local wstring GTrickPath <hidden=true>      =               "F:\\modmanager\\REtool\\GT_chunk_000\\natives\\stm\\";
+local wstring GTrickPath <hidden=true>   =              "F:\\modmanager\\REtool\\GT_chunk_000\\natives\\stm\\";
+local wstring DD2Path <hidden=true>      =              "H:\\Modding\\REtool\\DD2_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -190,6 +191,11 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(GTrickPath);
 	    xFmt = "stm\\";
         Printf("Detected Ghost Trick in filepath\n");
+    } else if (find(dir, "dd2") != -1 || find(dir, "ogma") != -1) {
+	    RSZVersion = "DD2"; o = 1;
+	    extractedDir = Lower(DD2Path);
+	    xFmt = "stm\\";
+        Printf("Detected Dragons Dogma 2 in filepath\n");
     } 
 	Local_Directory += xFmt;
 
@@ -280,6 +286,8 @@ void AutoDetectVersion() {
                         case 4: RSZVersion = "MHRise"; extractedDir = MHRPath; xFmt = "stm\\"; break;
                         case 5: RSZVersion = "RE7"; extractedDir = RTVersion ? RE7RTPath : RE7Path; xFmt = RTVersion ? "stm\\" : "x64\\";  break;
                         case 6: RSZVersion = "SF6"; extractedDir = SF6Path; xFmt = "stm\\"; break;
+                        case 7: RSZVersion = "RE4"; extractedDir = RE4Path; xFmt = "stm\\"; break;
+                        case 8: RSZVersion = "DD2"; extractedDir = DD2Path; xFmt = "stm\\"; break;
                         default: break;
                     }
                     
@@ -2652,7 +2660,7 @@ typedef struct {
 	    SPrintf(s, "%X", input);
 	    return s;
     }
-    
+
     string ReadHashName(uint32 &input) {
         if (!IsInitialized())
             ParseJson(JsonPath);
