@@ -4,12 +4,12 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.82
+//   Version: 0.84
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
 //  ID Bytes: 
-//   History: August 17, 2023
+//   History: March 25, 2024
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                             //Effect:
@@ -44,6 +44,7 @@ local wstring RE3RTPath <hidden=true>    =              "F:\\modmanager\\REtool\
 local wstring RE7RTPath <hidden=true>    =              "F:\\modmanager\\REtool\\RE7RT_chunk_000\\natives\\stm\\";
 local wstring SF6Path <hidden=true>      =              "F:\\modmanager\\REtool\\SF6Beta_chunk_000\\natives\\stm\\";
 local wstring GTrickPath <hidden=true>   =              "F:\\modmanager\\REtool\\GT_chunk_000\\natives\\stm\\";
+local wstring ApolloPath <hidden=true>   =              "F:\\modmanager\\REtool\\Apollo_chunk_000\\natives\\stm\\";
 local wstring DD2Path <hidden=true>      =              "H:\\Modding\\REtool\\DD2_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
@@ -196,6 +197,11 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(DD2Path);
 	    xFmt = "stm\\";
         Printf("Detected Dragons Dogma 2 in filepath\n");
+    } else if (find(dir, "pollo") != -1 || find(dir, "\\AJ") != -1 || find(dir, "\\AAT") != -1) {
+	    RSZVersion = "Apollo"; o = 1;
+	    extractedDir = Lower(ApolloPath);
+	    xFmt = "stm\\";
+        Printf("Detected Apollo Justice in filepath\n");
     } 
 	Local_Directory += xFmt;
 
@@ -1387,6 +1393,10 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 				if (FTell()+16 <= FileSize())
 				    rGUID Guid;
                 break;
+            case Position_tid:
+				if (FTell()+24 <= FileSize())
+				    double data <name="double x">, data <name="double y">, data <name="double z">, data <name="double w">;
+                break;
             case DateTime_tid:
                 int64 data;
                 break;
@@ -1974,6 +1984,10 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     if (exists(r.Guid))
                         s = ReadrGUID(r.Guid);
                     break;
+                case Position_tid:
+                    if (exists(r.data))
+                        SPrintf(s, "[%g, %g, %g]", r.data[0], r.data[1], r.data[2]);
+                    break;
                 case AABB_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g] [%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3],  r.data[4],  r.data[5],  r.data[6], r.data[7]);
@@ -2203,6 +2217,9 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     else if (exists(r.Guid))
                         WriterGuid(r.Guid, (string)s);
                     break;
+                case Position_tid:
+                    WriteRSZArray(r, s, 3, 8, false);
+                    break;
                 case Data_tid:
                 case ukn_type:
                     s = Lower(s);
@@ -2252,6 +2269,8 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
         local string FMT = "%g";
         if (elementSize == 1)
             FMT = "%i";
+        if (elementSize == 8 && find(array, "[.]") != -1)
+            FMT = "%lg";
         if (array[0] == 91)
             fmtString += "[";
         if (find(array, ",") == -1) {
@@ -2263,6 +2282,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 fmtString += FMT + ", ";
             fmtString += FMT;
         }
+        Printf("%s\n", fmtString);
 
         if (isSfix) {
             local float a, b, c, d;
