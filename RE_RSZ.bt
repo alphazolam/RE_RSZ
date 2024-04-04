@@ -6341,7 +6341,7 @@ if (ReadUInt(0) == id_RCOL) {
                 rGUID Guid;
                 StringRead Name(-1, 0, 0);
                 uint NameHash <format=hex>;
-                if (RSZVersion == "RE4") {
+                if (RSZVersion == "RE4" || RSZVersion == "DD2") {
                     int NumShapes;
                     int UserDataIndex;
                 } else {
@@ -6448,7 +6448,7 @@ if (ReadUInt(0) == id_RCOL) {
                         int GroupIndex;
                         int ShapeOffset;
                         uint status;
-                        if (RSZVersion == "RE4") {
+                        if (RSZVersion == "RE4" || RSZVersion == "DD2") {
                             uint uknA, uknB;
                             StringRead Name(-1, 0, 0);
                             StringRead KeyName(-1, 0, 0);
@@ -6490,7 +6490,7 @@ if (ReadUInt(0) == id_RCOL) {
 
     wstring ReadGroup(RcolGroup &g) { return ReadWString(ReadUInt64(startof(g)+16)); }
 
-    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16+(8*(RSZVersion=="RE4")))); }
+    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16+(8*(RSZVersion=="RE4" || RSZVersion=="DD2")))); }
 
     wstring ReadRequestSetName(RcolRequestSet &a) { string s; SPrintf(s, "RequestSet ID: %u  ", ReadUInt(startof(a))); return s; }
 
