@@ -4,16 +4,16 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.85
+//   Version: 0.86
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.2;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
 //  ID Bytes: 
-//   History: April 4, 2024
+//   History: April 17, 2024
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes
 //------------------------------------------------
 //              Option:                                                             //Effect:
-local string    RSZVersion        <hidden=true>        = "RE4";                     //change between RE2, RE3, RE8, DMC5 or MHRise
+local string    RSZVersion        <hidden=true>        = "DD2";                     //change between RE2, RE3, RE8, DMC5 or MHRise
 local int       RTVersion         <hidden=true>        = TRUE;                      //Use Ray-Tracing Update file formats for RE7, RE2R and RE3R (subject to AutoDetectGame)
 local int       Nesting           <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment     <hidden=true>        = FALSE;                     //Show metadata for each variable
@@ -2655,8 +2655,8 @@ typedef struct(int64 atAddress, int64 addOffset, byte isAbsolute) {
         else {
             char buffer[sizeof(st.String)];
             WriteBytes(buffer, startof(st.String), sizeof(st.String)); //write 0s
-            //WriteWString(startof(st.String), s );
-            st.String = s; 
+            WriteWString(startof(st.String), s);
+            //st.String = s; 
         }
     }
     
