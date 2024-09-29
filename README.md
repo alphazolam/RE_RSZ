@@ -4,6 +4,7 @@ Uses a DLL and large JSON files to know how to parse the structures of each game
 
 # Supported Games:
 - Apollo Justice: Ace Attorney Trilogy
+- Dead Rising Deluxe Remaster
 - Devil May Cry 5
 - Dragon's Dogma 2
 - Ghost Trick
