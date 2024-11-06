@@ -184,7 +184,7 @@ if (AutoDetectGame) {
 	        xFmt = "x64\\";
         }
         Printf("Detected RE7 in filepath\n");
-    } else if (find(dir, "\\mhr") != -1 || find(dir, "nter R") != -1 || find(dir, "Rise") != -1) {
+    } else if (find(dir, "\\mhr") != -1 || find(dir, "nter ?[Rr]") != -1 || find(dir, "[Rr]ise") != -1) {
 	    RSZVersion = "MHRise"; o = 1;
 	    extractedDir = Lower(MHRPath);
 	    xFmt = "stm\\";
@@ -204,12 +204,12 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(DRDRPath);
 	    xFmt = "stm\\";
         Printf("Detected Dead Rising Deluxe Remaster in filepath\n");
-    } else if (find(dir, "pollo") != -1 || find(dir, "\\AJ") != -1 || find(dir, "\\AAT") != -1) {
+    } else if (find(dir, "pollo") != -1 || find(dir, "\\[Aa][Jj]") != -1 || find(dir, "\\[Aa][Aa][Tt]") != -1) {
 	    RSZVersion = "Apollo"; o = 1;
 	    extractedDir = Lower(ApolloPath);
 	    xFmt = "stm\\";
         Printf("Detected Apollo Justice in filepath\n");
-    } else if (find(dir, "\\mhws") != -1 || find(dir, "nter W") != -1 || find(dir, "Wilds") != -1) {
+    } else if (find(dir, "\\mhw") != -1 || find(dir, "nter ?[Ww]") != -1 || find(dir, "[Ww]ilds") != -1) {
 	    RSZVersion = "MHWilds"; o = 1;
 	    extractedDir = Lower(MHWSPath);
 	    xFmt = "stm\\";
