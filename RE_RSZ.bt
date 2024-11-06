@@ -4,16 +4,16 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.87
+//   Version: 0.88
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
 // File Mask: *.user.*;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
 //  ID Bytes: 
-//   History: Sept 29, 2024
+//   History: Nov 06, 2024
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes, particulary when using RE_RSZ_ChangeValues.1sc
 //------------------------------------------------
 //              Option:                                                             //Effect:
-local string    RSZVersion        <hidden=true>        = "DD2";                     //change between RE2, RE3, RE8, DMC5, MHRise, DDR, DRDR, SF6
+local string    RSZVersion        <hidden=true>        = "DD2";                     //change between RE2, RE3, RE8, DMC5, MHRise, DDR, DRDR, SF6, MHWilds
 local int       RTVersion         <hidden=true>        = TRUE;                      //Use Ray-Tracing Update file formats for RE7, RE2R and RE3R (subject to AutoDetectGame)
 local int       Nesting           <hidden=true>        = TRUE;                      //Attempt to nest class instances inside eachother
 local int       ShowAlignment     <hidden=true>        = FALSE;                     //Show metadata for each variable
@@ -47,6 +47,7 @@ local wstring GTrickPath <hidden=true>   =              "F:\\modmanager\\REtool\
 local wstring ApolloPath <hidden=true>   =              "F:\\modmanager\\REtool\\Apollo_chunk_000\\natives\\stm\\";
 local wstring DD2Path <hidden=true>      =              "H:\\Modding\\REtool\\DD2_chunk_000\\natives\\stm\\";
 local wstring DRDRPath <hidden=true>      =             "H:\\Modding\\REtool\\DRDR_chunk_000\\natives\\stm\\";
+local wstring MHWSPath <hidden=true>      =             "H:\\Modding\\REtool\\MHWS_chunk_000\\natives\\stm\\";
 
 //RSZ Parser By Darkness:
 #link "RSZParser.dll"
@@ -203,12 +204,17 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(DRDRPath);
 	    xFmt = "stm\\";
         Printf("Detected Dead Rising Deluxe Remaster in filepath\n");
-    }  else if (find(dir, "pollo") != -1 || find(dir, "\\AJ") != -1 || find(dir, "\\AAT") != -1) {
+    } else if (find(dir, "pollo") != -1 || find(dir, "\\AJ") != -1 || find(dir, "\\AAT") != -1) {
 	    RSZVersion = "Apollo"; o = 1;
 	    extractedDir = Lower(ApolloPath);
 	    xFmt = "stm\\";
         Printf("Detected Apollo Justice in filepath\n");
-    } 
+    } else if (find(dir, "\\mhws") != -1 || find(dir, "nter W") != -1 || find(dir, "Wilds") != -1) {
+	    RSZVersion = "MHWilds"; o = 1;
+	    extractedDir = Lower(MHWSPath);
+	    xFmt = "stm\\";
+        Printf("Detected MHWilds in filepath\n");
+    }
 	Local_Directory += xFmt;
 
 } else if ((!RTVersion && (RSZVersion == "RE2" || RSZVersion == "RE7")) || RSZVersion == "DMC5") {
@@ -301,6 +307,7 @@ void AutoDetectVersion() {
                         case 7: RSZVersion = "RE4"; extractedDir = RE4Path; xFmt = "stm\\"; break;
                         case 8: RSZVersion = "DD2"; extractedDir = DD2Path; xFmt = "stm\\"; break;
                         case 9: RSZVersion = "DRDR"; extractedDir = DRDRPath; xFmt = "stm\\"; break;
+                        case 10: RSZVersion = "MHWilds"; extractedDir = MHWSPath; xFmt = "stm\\"; break;
                         default: break;
                     }
                     
@@ -3275,7 +3282,7 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
                     uint32 ukn;
                 }
             }
-            if (RSZVersion == "RE4" || RSZVersion == "DD2")
+            if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds")
                 uint64 ukn;
             uint64 groupsPtrTbl;
             uint64 dataOffset <name="userDataStreamPtr">;
@@ -6348,7 +6355,7 @@ if (ReadUInt(0) == id_RCOL) {
                 rGUID Guid;
                 StringRead Name(-1, 0, 0);
                 uint NameHash <format=hex>;
-                if (RSZVersion == "RE4" || RSZVersion == "DD2") {
+                if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
                     int NumShapes;
                     int UserDataIndex;
                 } else {
@@ -6455,7 +6462,7 @@ if (ReadUInt(0) == id_RCOL) {
                         int GroupIndex;
                         int ShapeOffset;
                         uint status;
-                        if (RSZVersion == "RE4" || RSZVersion == "DD2") {
+                        if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
                             uint uknA, uknB;
                             StringRead Name(-1, 0, 0);
                             StringRead KeyName(-1, 0, 0);
@@ -6497,7 +6504,7 @@ if (ReadUInt(0) == id_RCOL) {
 
     wstring ReadGroup(RcolGroup &g) { return ReadWString(ReadUInt64(startof(g)+16)); }
 
-    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16+(8*(RSZVersion=="RE4" || RSZVersion=="DD2")))); }
+    wstring ReadRequestSet(RcolRequestSet &a) { return ReadWString(ReadUInt(startof(a)+16+(8*(RSZVersion=="RE4" || RSZVersion=="DD2" || RSZVersion == "MHWilds")))); }
 
     wstring ReadRequestSetName(RcolRequestSet &a) { string s; SPrintf(s, "RequestSet ID: %u  ", ReadUInt(startof(a))); return s; }
 
