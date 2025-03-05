@@ -1503,7 +1503,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         }
                         if (FTell()==startof(this))
                             Printf(structHashName + "\n");
-                    } data <open=true, name=this.structHashName>;
+                    } data <open=true, name="struct data">;
                 }
 				break;
 			case Range_tid:
