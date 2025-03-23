@@ -9,6 +9,7 @@ Uses a DLL and large JSON files to know how to parse the structures of each game
 - Dragon's Dogma 2
 - Ghost Trick
 - Monster Hunter: Rise
+- Monster Hunter Wilds
 - Resident Evil 2 Remake [NonRT] | [RT]
 - Resident Evil 3 Remake [NonRT] | [RT]
 - Resident Evil 4 Remake
