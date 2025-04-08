@@ -1547,6 +1547,13 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 				    float data <name="float x">, data <name="float y">, data <name="float z">, data <name="float w">;
                 }
 				break;
+			case KeyFrame_tid:
+                if (FTell()+16 <= FileSize()) {
+				    float data <name="value">;
+                    short data <name="CurveType">;
+                    hfloat data <name="Time">, data <name="InNormalY">, data <name="InNormalX">, data <name="OutNormalY">, data <name="OutNormalX">;
+                }
+				break;
             case Sfix2_tid:
 			case Int2_tid:
                 if (FTell()+8 <= FileSize())
@@ -1986,6 +1993,10 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3]);
                     break;
+                case KeyFrame_tid:
+                    if (exists(r.data))
+                        SPrintf(s, "[%f, %d, %g, %g, %g, %g, %g]", r.data[0], r.data[1], r.data[2], r.data[3], r.data[4], r.data[5], r.data[6]);
+                    break;
                 case Sfix4_tid:
                     if (exists(r.data))
                         SPrintf(s, "[%g, %g, %g, %g]", ReadSfix(r.data[0]), ReadSfix(r.data[1]), ReadSfix(r.data[2]), ReadSfix(r.data[3]));
@@ -2210,6 +2221,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                     WriteRSZArray(r, s, 3, 4, false);
                     break;
                 case Vec4_tid:
+                // case KeyFrame_tid: not implemnet yet
                 case Float4_tid:
                 case Quaternion_tid:
                     WriteRSZArray(r, s, 4, 4, false);
