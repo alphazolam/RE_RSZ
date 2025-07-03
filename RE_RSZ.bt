@@ -189,6 +189,11 @@ if (AutoDetectGame) {
 	    extractedDir = Lower(MHRPath);
 	    xFmt = "stm\\";
         Printf("Detected MHRise in filepath\n");
+    }  else if (find(dir, "\\mhws") != -1 || find(dir, "nter W") != -1 || find(dir, "Wilds") != -1) {
+	    RSZVersion = "MHWilds"; o = 1;
+	    extractedDir = Lower(MHWSPath);
+	    xFmt = "stm\\";
+        Printf("Detected MHWilds in filepath\n");
     } else if (find(dir, "\\gt") != -1 || find(dir, "host ?tr") != -1 || find(dir, "trick") != -1) {
 	    RSZVersion = "GTrick"; o = 1;
 	    extractedDir = Lower(GTrickPath);
