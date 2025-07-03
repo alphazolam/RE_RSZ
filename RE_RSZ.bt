@@ -3277,8 +3277,13 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
                 //uint maxRequestSetId;
             } else {
                 int numGroups;
-                int numShapes;
-                int numUserData;
+                if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
+                    int numUserData;
+                    int numUnkn;
+                } else {
+                    int numShapes;
+                    int numUserData;
+                }
                 int numRequestSets;
                 uint maxRequestSetId;
 
@@ -3312,6 +3317,10 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
             }
             if (RSZVersion == "RE3" && !RTVersion)
                 uint64 ukn;
+            if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
+                uint64 unknPtr;
+                uint64 unknPtr;
+            }
         }
         
         if (magic == id_SCN) {
@@ -6363,6 +6372,24 @@ string readRequestSetInfoCombinedKey( struct _RequestSetInfo &r) {
 
 //RCOL only =======================================================
 if (ReadUInt(0) == id_RCOL) { 
+    typedef enum <uint32> {
+        ShapeType_Aabb = 0x0,
+        ShapeType_Sphere = 0x1,
+        ShapeType_ContinuousSphere = 0x2,
+        ShapeType_Capsule = 0x3,
+        ShapeType_ContinuousCapsule = 0x4,
+        ShapeType_Box = 0x5,
+        ShapeType_Mesh = 0x6,
+        ShapeType_HeightField = 0x7,
+        ShapeType_StaticCompound = 0x8,
+        ShapeType_Area = 0x9,
+        ShapeType_Triangle = 0xA,
+        ShapeType_SkinningMesh = 0xB,
+        ShapeType_Cylinder = 0xC,
+        ShapeType_DeformableMesh = 0xD,
+        ShapeType_Invalid = 0xE,
+        ShapeType_Max = 0xF,
+    } ShapeType;
     FSeek(Header.groupsPtrTbl);
     struct {
         local uint shapesEnd <hidden=true>;
@@ -6404,33 +6431,26 @@ if (ReadUInt(0) == id_RCOL) {
                         int LayerIndex;
                         int Attribute;
                         uint SkipIdBits;
-                        uint IgnoreTagBits;
-                        StringRead primaryJointNameStr(-1, 0, 0);
-                        StringRead secondaryJointNameStr(-1, 0, 0);
-                        uint PrimaryJointNameHash <format=hex>;
-                        uint SecondaryJointNameHash <format=hex>;
+                        if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
+                            ShapeType shapeType;
+                            uint IgnoreTagBits;
+                            uint unkn;
+                            StringRead primaryJointNameStr(-1, 0, 0);
+                            StringRead secondaryJointNameStr(-1, 0, 0);
+                            uint PrimaryJointNameHash <format=hex>;
+                            uint SecondaryJointNameHash <format=hex>;
+                        }else{
+                            uint IgnoreTagBits;
+                            StringRead primaryJointNameStr(-1, 0, 0);
+                            StringRead secondaryJointNameStr(-1, 0, 0);
+                            uint PrimaryJointNameHash <format=hex>;
+                            uint SecondaryJointNameHash <format=hex>;
+                            ShapeType shapeType;
+                            FSkip(4);
+                        }
                     } ShapeInfo <name="[ShapeInfo]", read=ReadRcolShapeInfo>;
             
-                    enum <uint32> {
-                        ShapeType_Aabb = 0x0,
-                        ShapeType_Sphere = 0x1,
-                        ShapeType_ContinuousSphere = 0x2,
-                        ShapeType_Capsule = 0x3,
-                        ShapeType_ContinuousCapsule = 0x4,
-                        ShapeType_Box = 0x5,
-                        ShapeType_Mesh = 0x6,
-                        ShapeType_HeightField = 0x7,
-                        ShapeType_StaticCompound = 0x8,
-                        ShapeType_Area = 0x9,
-                        ShapeType_Triangle = 0xA,
-                        ShapeType_SkinningMesh = 0xB,
-                        ShapeType_Cylinder = 0xC,
-                        ShapeType_DeformableMesh = 0xD,
-                        ShapeType_Invalid = 0xE,
-                        ShapeType_Max = 0xF,
-                    } ShapeType;
                     
-                    FSkip(4);
                     struct {
                         float x, y, z, w;
                         float x, y, z, w;
@@ -6440,7 +6460,8 @@ if (ReadUInt(0) == id_RCOL) {
                     } Parameters;
                     if (FTell() > Groups.shapesEnd)
                         Groups.shapesEnd = FTell();
-                    if (ShapeInfo.UserDataIndex >= 0 && exists(RSZFile[0].ObjectTable[ShapeInfo.UserDataIndex])) {
+                    if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
+                    }else if (ShapeInfo.UserDataIndex >= 0 && exists(RSZFile[0].ObjectTable[ShapeInfo.UserDataIndex])) {
                         local ushort ObjectIndex <hidden=true> = RSZFile[0].ObjectTable[ShapeInfo.UserDataIndex];
                         FSeek(startof(RSZFile[0].Data.RawData.RSZ[ObjectIndex]));
                         struct RSZInstance RSZ <size=SizeRSZInstance>;
@@ -6478,15 +6499,18 @@ if (ReadUInt(0) == id_RCOL) {
                         local ushort Index = (startof(this) - startof(RequestSets)) / 48;
                         uint ID;
                         int GroupIndex;
-                        int ShapeOffset;
-                        uint status;
                         if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
-                            uint uknA, uknB;
+                            int RequestSetUserdataIndex;
+                            uint GroupUserdataIndexStart;
+                            uint status;
+                            uint requestSetIndex;
                             StringRead Name(-1, 0, 0);
                             StringRead KeyName(-1, 0, 0);
                             uint KeyHash <format=hex>;
-                            uint KeyHash2 <format=hex>;
+                            uint KeyNameHash <format=hex>;
                         } else {
+                            int ShapeOffset;
+                            uint status;
                             StringRead Name(-1, 0, 0);
                             uint NameHash <format=hex>;
                             FSkip(4);
@@ -6494,12 +6518,29 @@ if (ReadUInt(0) == id_RCOL) {
                             uint KeyHash <format=hex>;
                         }
                     } RequestSetInfo <name="[RequestSetInfo]", read=readRequestSetInfoCombinedKey>;
-                    local ushort ObjectIndex <hidden=true> = RSZFile.ObjectTable[RequestSetInfo.Index];
                     FSeek(startof(Groups.Group[RequestSetInfo.GroupIndex]));
                     struct RcolGroup Group <size=80>;
                     
-                    FSeek(startof(RSZFile.Data.RawData.RSZ[ObjectIndex]));
-                    struct RSZInstance RSZ <size=SizeRSZInstance>;
+                    if (RSZVersion == "RE4" || RSZVersion == "DD2" || RSZVersion == "MHWilds") {
+                        struct {
+                            local ushort GroupUserdataIndexEnd = RequestSetInfo.GroupUserdataIndexStart + Groups.Group[RequestSetInfo.GroupIndex].GroupInfo.NumShapes;
+                            
+                            for (m=RequestSetInfo.GroupUserdataIndexStart; m<GroupUserdataIndexEnd; m++){
+                                FSeek(startof(RSZFile.Data.RawData.RSZ[RSZFile.ObjectTable[m]]));
+                                struct RSZInstance RSZ <size=SizeRSZInstance>;
+                                
+                            }
+                        } GroupUserDatas;
+                        
+                        local ushort ObjectIndex <hidden=true> = RSZFile.ObjectTable[RequestSetInfo.RequestSetUserdataIndex];
+                        FSeek(startof(RSZFile.Data.RawData.RSZ[ObjectIndex]));
+                        struct RSZInstance RSZ <size=SizeRSZInstance>;
+                        
+                    } else {
+                        local ushort ObjectIndex <hidden=true> = RSZFile.ObjectTable[RequestSetInfo.Index];
+                        FSeek(startof(RSZFile.Data.RawData.RSZ[ObjectIndex]));
+                        struct RSZInstance RSZ <size=SizeRSZInstance>;
+                    }
                     
                     FSeek(startof(this)+48);
                 } RequestSet <size=48, name=ReadRequestSetName, read=ReadRequestSet>;
