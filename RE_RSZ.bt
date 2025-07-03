@@ -1409,7 +1409,7 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                 break;
             case Position_tid:
 				if (FTell()+24 <= FileSize())
-				    double data <name="double x">, data <name="double y">, data <name="double z">, data <name="double w">;
+				    double data <name="double x">, data <name="double y">, data <name="double z">;
                 break;
             case DateTime_tid:
                 int64 data;
