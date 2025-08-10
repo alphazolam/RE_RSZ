@@ -4792,8 +4792,16 @@ if (ReadUInt(0) != id_RCOL) { //no RCOL
                         ObjectId id(0);
                         ObjectId parentId(0);
                         ushort componentCount;
-                        short ukn;
-                        int prefabId;
+                        if((RSZVersion == "RE7" && !RTVersion) || (!RTVersion && RSZVersion == "RE2") || RSZVersion == "DMC5")
+                        {
+                            short prefabId;
+                            int ukn;
+                        }
+                        else
+                        {
+                            short ukn;
+                            int prefabId;
+                        }
                     }
                     FSkip(-2);
                     //ubyte AddGameObjectOffset <read=ReadGameObjectsOffset>;
