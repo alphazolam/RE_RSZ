@@ -1474,6 +1474,47 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
 					    FSeek(startof(ObjectIndex)+4);
 				    }
 				break;
+            case Struct_tid:
+                if (FTell()+1 <= FileSize()) {
+                    struct RSZStructTypeData{
+                        local uint32 structHash = hash_string(fieldOrgTypeName);
+                        local uint32 structFieldCount = GetFieldCount(structHash);
+                        local string structHashName = ReadHashName(structHash);
+
+                        if (structFieldCount == 0xFFFFFFFF) { 
+                            Printf("Class %u %s not detected in JSON!\n", structHash, structHashName);
+                            byte skip <hidden=true>;
+                        } else if (!FEof()) {
+                            local int z <hidden=true>, FieldSize <hidden=true>;
+                            for (z = 0; z < structFieldCount; z++) {
+                                FieldSize = GetFieldSize(structHash, z);
+                                
+                                FSeek(getAlignedOffset(FTell(), GetFieldAlignment(structHash, z)));   
+                                
+                                if ((FieldSize == 16 && GetFieldAlignment(structHash,z) == 16 && detectedColorVector(FTell())) && (findS(this.structHashName, "olor") != -1 
+                                || findS(GetFieldName(structHash,z), "olor") != -1) )  {
+                                    temp = ( (int)readColorFloat(FTell()+8)<<16 | (int)readColorFloat(FTell()+4)<<8 | (int)readColorFloat(FTell()));
+                                    SetForeColor(temp); 
+                                    SetBackColor(temp);
+                                } else (!broken ) ? SetForeColor(cGreen) : SetForeColor(cYellow); // bed 3045
+
+                                struct RSZVariable var(structHash, z) <open=suppress>;
+
+                                SetForeColor(cNone);
+                                SetBackColor(cNone);
+                            }
+                        }
+                        
+                        if (FTell() - startof(this)  == 0) { 
+                            if (FEof())
+                                FSkip(-1);
+                            ubyte skipFileData <hidden=true>;
+                        }
+                        if (FTell()==startof(this))
+                            Printf(structHashName + "\n");
+                    } data <open=true, name="struct data">;
+                }
+				break;
 			case Range_tid:
                 if (FTell()+8 <= FileSize())
 				    float data <name="float R">, data <name="float S">;
@@ -1933,6 +1974,9 @@ typedef struct(uint32 classHash, uint16 fieldIndex) {
                         return r.path.String;
                     SPrintf(s, "%Li", ReadInt(startof(r)));
                     break;
+                case Struct_tid:
+                    if (exists(r.data))
+                        return r.data.structHashName;
                 case Bool_tid:
                     if (exists(r.data))
                         s = ReadBOOL(r.data);
@@ -3181,6 +3225,18 @@ uint32 hash_wide(string key){
         for(it = 0; it < length; it += 2){
             key_array[it] = key[it / 2];
             key_array[it + 1] = 0;
+        }
+        return mmh3(key_array, length, 0xFFFFFFFF);
+    } return 0;
+}
+
+uint32 hash_string(string key){
+    local uint64 it<hidden=true>;
+    local const uint length = Strlen(key);
+    if (length) {
+        local byte key_array[length];
+        for(it = 0; it < length; it += 1){
+            key_array[it] = key[it];
         }
         return mmh3(key_array, length, 0xFFFFFFFF);
     } return 0;
