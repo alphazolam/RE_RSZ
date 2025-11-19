@@ -4,12 +4,12 @@
 //      File: RE_RSZ.bt
 //   Authors: alphaZomega 
 // Thanks To: Praydog, Darkness, Dtlnor
-//   Version: 0.88
+//   Version: 0.89
 //   Purpose: Parsing RE Engine RSZ data
 //  Category: RE Engine
-// File Mask: *.user.*;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*
+// File Mask: *.user.*;*.pfb.*;*.scn.*;*.rcol.*;*.bhvt.*;*.motfsm2.*;*.fsmv2.*;*.fchar.*;*.pog.*
 //  ID Bytes: 
-//   History: Nov 06, 2024
+//   History: Nov 12, 2025
 //      Note: It is recommended to use this template with 010 Editor v9.0.2 or v10.0.2, to avoid crashes, particulary when using RE_RSZ_ChangeValues.1sc
 //------------------------------------------------
 //              Option:                                                             //Effect:
@@ -3222,11 +3222,12 @@ typedef enum {
     id_BHVT = 1414940738,
     id_uvar = 1918989941,
     id_fchr = 1919443814,
+    id_POG = 4673360,
 } MAGIC;
 
 //Start of reading File =====================================================================================================================================
 FSeek(0);
-if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUInt(0)==id_RCOL || ReadUInt(4)==id_mfs2 || ReadUInt(0)==id_BHVT || ReadUInt(4)==id_fchr)
+if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUInt(0)==id_RCOL || ReadUInt(0)==id_POG || ReadUInt(4)==id_mfs2 || ReadUInt(0)==id_BHVT || ReadUInt(4)==id_fchr)
     struct {
         HashGenerator HashMaker <name="Hash Generator">;
         FSkip(-1);
@@ -3369,6 +3370,24 @@ if (ReadUInt(0)==id_SCN || ReadUInt(0)==id_PFB || ReadUInt(0)==id_USR || ReadUIn
             uint styleCount;
             uint dataCount;
             uint StringsCount;
+        }
+
+        if (magic == id_POG) {
+            MAGIC magic;
+            int version;
+            HASH unkn1;
+            HASH unkn2;
+            uint userdataCount;
+            uint nodesCount;
+            HASH objectHash;
+            HASH subObjectHash;
+            uint64 userdataInfoTbl;
+            uint64 nodesOffset;
+            uint64 pointsOffset;
+            uint64 objectTblRSZOffset;
+            uint64 objectTblRSZEnd;
+            uint64 subObjectTblRSZOffset;
+            uint64 subObjectTblRSZEnd;
         }
 
         if (exists(dataOffset) && ReadUInt(dataOffset) != 5919570)
@@ -6891,6 +6910,93 @@ string ReadfObject(fObject &o) {
     return o.name;
 }
 
+//POG only =======================================================
+typedef struct {
+    float x, y, z, pad;
+} Vec3<read=ReadVec3>;
+
+string ReadVec3(Vec3 &v) {
+    local string s; SPrintf(s, "%f, %f, %f", v.x, v.y, v.z); return s;
+}
+
+
+if (ReadUInt(0) == id_POG) {
+    FSeek(Header.nodesOffset);
+    struct GraphData {
+        local int i, j = 0;
+        for(i = 0; i < Header.nodesCount; i++) {
+            struct NodeData {
+                uint32 id;
+                uint32 linkCount;
+                uint64 linkOffset;
+                if (linkCount > 0) {
+                    struct LinkDatas {
+                        local uint linkSize = linkCount;
+                        FSeek(linkOffset);
+                        for(j = 0; j < linkSize; j++) {
+                            struct LinkData {
+                                uint32 id;
+                                HASH pointKey;
+                            } Link<read=ReadLink>;
+                        }
+                    } Links<read=ReadLinks>;
+                    FSeek(startof(this)+16);
+                }
+            } Node<read=ReadNode, comment="seems like Node is just a warpper of Point">;
+        } 
+    } Graph;
+    
+    FSeek(Header.pointsOffset);
+    struct PointData {
+        if (Header.pointsOffset != 0) {
+            local int i = 0;
+            uint64 pointsCount;
+            uint64 pointOffset;
+            FSeek(pointOffset);
+            for(i = 0; i < pointsCount; i++) {
+                struct Point{
+                    Vec3 unkPos1;
+                    Vec3 unkPos2;
+                    int32 unkId1;
+                    int32 unkId2;
+                    int32 unkId3;
+                    int32 unkAttr;
+                } point<read=ReadPoint>;
+            }
+        }
+    } Points;
+}
+
+string ReadLink(LinkData &l) {
+    local string s; SPrintf(s, "%i: %08X", l.id, l.pointKey.Hash); return s; 
+}
+
+string ReadLinks(LinkDatas &l) {
+    local string s, ss;
+    local int i;
+    SPrintf(s, "%d", l.Link[0].id);
+    for (i=1; i<l.linkSize; i++){
+        SPrintf(ss, ", %d", l.Link[i].id);
+        s += ss;
+    }
+    return s;
+}
+
+string ReadNode(NodeData &n) {
+    local string s;
+    if (exists(n.Links))
+        SPrintf(s, "%d - %s", n.id, ReadLinks(n.Links));
+    else
+        SPrintf(s, "%d", n.id);
+    
+    return s;
+}
+
+string ReadPoint(Point &p) {
+    local string s;
+    SPrintf(s, "[%s] [%s] %d, %d, %d, %d", ReadVec3(p.unkPos1), ReadVec3(p.unkPos2), p.unkId1, p.unkId2, p.unkId3, p.unkAttr);
+    return s;
+}
 
 //fix headerstrings array
 if (BHVTStart == -1 && headerStringsCount > 0) {
