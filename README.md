@@ -2,6 +2,10 @@
 010 Editor Binary Template for editing RE Engine game files contiaining "RSZ" data.
 Uses a DLL and large JSON files to know how to parse the structures of each game.
 
+# Note
+
+Consider using [REECE](https://github.com/kagenocookie/REE-Content-Editor), [REE-Lib-Resources](https://github.com/kagenocookie/REE-Lib-Resources) or [REasy](https://github.com/seifhassine/REasy) for more up-to-date dumps or editing functionality.
+
 # Supported Games:
 - Apollo Justice: Ace Attorney Trilogy
 - Dead Rising Deluxe Remaster
